@@ -58,11 +58,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {
-        "projectId": "3e15bb1d-1bb4-4bfc-ae0c-6db8ec43b3b0"
-      }
-    },
-    "owner": "whoisarvian"
+      "router": {}
+    }
   }
 }
