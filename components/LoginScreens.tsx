@@ -3,26 +3,26 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from "react";
-import { 
-  Alert, 
-  Animated, 
-  Dimensions, 
-  Image, 
-  Modal, 
-  StyleSheet, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  View, 
+import {
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
-  ScrollView
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 
 const { width, height } = Dimensions.get('window');
 
 export default function LoginScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
@@ -40,7 +40,7 @@ export default function LoginScreen() {
       const data = await res.json();
 
       const found = data.find(
-        (u) => u.username === username && u.password === password
+        (u: any) => u.username === username && u.password === password
       );
 
       if (found) {
@@ -86,11 +86,11 @@ export default function LoginScreen() {
 
   return (
     <LinearGradient colors={['#667eea', '#764ba2']} style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardContainer}
       >
-        <ScrollView 
+        <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
@@ -104,7 +104,7 @@ export default function LoginScreen() {
                 <Ionicons name="map" size={40} color="#667eea" />
               </LinearGradient>
             </View>
-            
+
             <Text style={styles.welcomeTitle}>Selamat Datang</Text>
             <Text style={styles.welcomeSubtitle}>Sistem Pelaporan Jalan Raya</Text>
           </View>
@@ -135,7 +135,7 @@ export default function LoginScreen() {
                 {/* Username Input */}
                 <View style={styles.inputContainer}>
                   <View style={[
-                    styles.inputWrapper, 
+                    styles.inputWrapper,
                     inputFocus === 'username' && styles.inputWrapperFocused
                   ]}>
                     <Ionicons name="person" size={20} color="#667eea" style={styles.inputIcon} />
@@ -155,7 +155,7 @@ export default function LoginScreen() {
                 {/* Password Input */}
                 <View style={styles.inputContainer}>
                   <View style={[
-                    styles.inputWrapper, 
+                    styles.inputWrapper,
                     inputFocus === 'password' && styles.inputWrapperFocused
                   ]}>
                     <Ionicons name="lock-closed" size={20} color="#667eea" style={styles.inputIcon} />
@@ -169,14 +169,14 @@ export default function LoginScreen() {
                       onFocus={() => setInputFocus('password')}
                       onBlur={() => setInputFocus('')}
                     />
-                    <TouchableOpacity 
-                      onPress={() => setShowPassword(!showPassword)} 
+                    <TouchableOpacity
+                      onPress={() => setShowPassword(!showPassword)}
                       style={styles.eyeButton}
                     >
-                      <FontAwesome 
-                        name={showPassword ? "eye" : "eye-slash"} 
-                        size={18} 
-                        color="#667eea" 
+                      <FontAwesome
+                        name={showPassword ? "eye" : "eye-slash"}
+                        size={18}
+                        color="#667eea"
                       />
                     </TouchableOpacity>
                   </View>
@@ -189,9 +189,9 @@ export default function LoginScreen() {
 
                 {/* Login Button */}
                 <Animated.View style={[styles.buttonContainer, { transform: [{ scale: btnScale }] }]}>
-                  <TouchableOpacity 
-                    onPress={handleLogin} 
-                    onPressIn={handlePressIn} 
+                  <TouchableOpacity
+                    onPress={handleLogin}
+                    onPressIn={handlePressIn}
                     onPressOut={handlePressOut}
                   >
                     <LinearGradient
@@ -214,7 +214,7 @@ export default function LoginScreen() {
                 </View>
 
                 {/* Register Link */}
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.registerButton}
                   onPress={() => setModalVisible(true)}
                 >
@@ -228,14 +228,14 @@ export default function LoginScreen() {
       </KeyboardAvoidingView>
 
       {/* Enhanced Modal Register */}
-      <Modal 
-        visible={modalVisible} 
-        transparent 
+      <Modal
+        visible={modalVisible}
+        transparent
         animationType="slide"
         statusBarTranslucent
       >
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.modalKeyboard}
           >
@@ -246,7 +246,7 @@ export default function LoginScreen() {
               >
                 {/* Modal Header */}
                 <View style={styles.modalHeader}>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => setModalVisible(false)}
                     style={styles.closeButton}
                   >
@@ -283,14 +283,14 @@ export default function LoginScreen() {
                         value={regPass}
                         onChangeText={setRegPass}
                       />
-                      <TouchableOpacity 
-                        onPress={() => setShowRegPassword(!showRegPassword)} 
+                      <TouchableOpacity
+                        onPress={() => setShowRegPassword(!showRegPassword)}
                         style={styles.eyeButton}
                       >
-                        <FontAwesome 
-                          name={showRegPassword ? "eye" : "eye-slash"} 
-                          size={18} 
-                          color="#667eea" 
+                        <FontAwesome
+                          name={showRegPassword ? "eye" : "eye-slash"}
+                          size={18}
+                          color="#667eea"
                         />
                       </TouchableOpacity>
                     </View>
@@ -318,8 +318,8 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
+  container: {
+    flex: 1
   },
   keyboardContainer: {
     flex: 1,
@@ -481,9 +481,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  loginButtonText: { 
-    color: '#fff', 
-    fontWeight: '700', 
+  loginButtonText: {
+    color: '#fff',
+    fontWeight: '700',
     fontSize: 16,
     marginLeft: 8,
     letterSpacing: 0.5,
@@ -524,7 +524,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  
+
   // Modal Styles
   modalOverlay: {
     flex: 1,

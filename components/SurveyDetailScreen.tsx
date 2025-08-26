@@ -12,7 +12,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text, // Pastikan Text diimpor
+  Text,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -20,29 +20,29 @@ import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
+// PERBAIKAN: Sesuaikan interface dengan skema tabel Supabase
 interface Laporan {
-  _id: string;
-  namaJalan: string;
-  Keterangan: string; // Tambah Keterangan
+  id: string; // id adalah primary key di Supabase
+  nama_jalan: string;
+  keterangan: string;
   lokasi: string;
-  jenisJalan: string;
-  staAwal: string; // Tambah staAwal
-  staAkhir: string; // Tambah staAkhir
-  jenisRetakDominan: string;
-  luasRetak: number; // Tambah luasRetak
-  lebarRetak: number; // Tambah lebarRetak
-  jumlahLubang: number; // Tambah jumlahLubang
-  alurRoda: number; // Tambah alurRoda
-  volumeLHR: string;
-  sumberData: string; // Tambah sumberData
-  // umur: string; // DIHAPUS: Umur Perkerasan
-  jenisPerkerasan: string;
+  jenis_jalan: string;
+  sta_awal: string;
+  sta_akhir: string;
+  jenis_retak_dominan: string;
+  luas_retak: number;
+  lebar_retak: number;
+  jumlah_lubang: number;
+  alur_roda: number;
+  volume_lhr: string;
+  sumber_data: string;
+  jenis_perkerasan: string;
   kategori: string;
   aksi: string;
   prioritas: number;
   tanggal: string;
   status: string;
-  foto: string[];
+  foto_urls: string[]; // Menggunakan nama kolom yang sesuai
 }
 
 const SurveyDetailScreen = () => {
@@ -66,8 +66,8 @@ const SurveyDetailScreen = () => {
   const openInMaps = () => {
     if (lat && lng) {
       const url = Platform.select({
-        ios: `maps:${lat},${lng}?q=${laporan.namaJalan}`,
-        android: `geo:${lat},${lng}?q=${laporan.namaJalan}`,
+        ios: `maps:${lat},${lng}?q=${laporan.nama_jalan}`,
+        android: `geo:${lat},${lng}?q=${laporan.nama_jalan}`,
       });
       if (url) Linking.openURL(url).catch(() => Alert.alert("Error", "Tidak bisa buka maps"));
     }
@@ -86,34 +86,34 @@ const SurveyDetailScreen = () => {
         <script>
           var map = L.map('map').setView([${lat}, ${lng}], 16);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-          L.marker([${lat}, ${lng}]).addTo(map).bindPopup('${laporan.namaJalan}').openPopup();
+          L.marker([${lat}, ${lng}]).addTo(map).bindPopup('${laporan.nama_jalan}').openPopup();
         </script>
       </body>
     </html>
   `;
 
-  // Helper function untuk mendapatkan teks bantuan (dari LaporScreen)
+  // Helper function untuk mendapatkan teks bantuan
   const getHelpText = (field: string, value: number): string => {
     switch (field) {
-      case 'luasRetak':
+      case 'luas_retak':
         if (value === 0) return 'Tidak Ada';
         if (value < 10) return '< 10%';
         if (value >= 10 && value <= 30) return '10 - 30%';
         if (value > 30) return '> 30%';
         return '';
-      case 'lebarRetak':
+      case 'lebar_retak':
         if (value === 0) return 'Tidak Ada';
         if (value < 1) return '< 1mm';
         if (value >= 1 && value <= 3) return '1 - 3 mm';
         if (value > 3) return '> 3mm';
         return '';
-      case 'jumlahLubang':
+      case 'jumlah_lubang':
         if (value === 0) return 'Tidak Ada';
         if (value < 10) return '< 10 per km';
         if (value >= 10 && value <= 50) return '10 - 50 per km';
         if (value > 50) return '> 50 per km';
         return '';
-      case 'alurRoda':
+      case 'alur_roda':
         if (value === 0) return 'Tidak Ada';
         if (value < 1) return '< 1 cm';
         if (value >= 1 && value <= 3) return '1 - 3 cm';
@@ -135,46 +135,46 @@ const SurveyDetailScreen = () => {
     const steps = [];
 
     // 1. Perhitungan SDI1 (Persentase Luas Retak)
-    if (laporan.luasRetak === 0) {
+    if (laporan.luas_retak === 0) {
       sdi1 = 0;
-      steps.push(`1. SDI1 (Luas Retak ${laporan.luasRetak}%): Tidak ada retak, SDI1 = 0.`);
-    } else if (laporan.luasRetak < 10) {
+      steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Tidak ada retak, SDI1 = 0.`);
+    } else if (laporan.luas_retak < 10) {
       sdi1 = 5;
-      steps.push(`1. SDI1 (Luas Retak ${laporan.luasRetak}%): Luas retak < 10%, SDI1 = 5.`);
-    } else if (laporan.luasRetak >= 10 && laporan.luasRetak <= 30) {
+      steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Luas retak < 10%, SDI1 = 5.`);
+    } else if (laporan.luas_retak >= 10 && laporan.luas_retak <= 30) {
       sdi1 = 20;
-      steps.push(`1. SDI1 (Luas Retak ${laporan.luasRetak}%): Luas retak 10-30%, SDI1 = 20.`);
-    } else if (laporan.luasRetak > 30) {
+      steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Luas retak 10-30%, SDI1 = 20.`);
+    } else if (laporan.luas_retak > 30) {
       sdi1 = 40;
-      steps.push(`1. SDI1 (Luas Retak ${laporan.luasRetak}%): Luas retak > 30%, SDI1 = 40.`);
+      steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Luas retak > 30%, SDI1 = 40.`);
     }
     sdiTotal = sdi1;
     steps.push(`   SDI Total saat ini: ${sdiTotal}`);
 
     // 2. Perhitungan SDI2 (Lebar Retak Rata-rata)
-    if (laporan.lebarRetak > 3) {
+    if (laporan.lebar_retak > 3) {
       sdi2 = sdi1 * 2;
-      steps.push(`2. SDI2 (Lebar Retak ${laporan.lebarRetak}mm): Lebar retak > 3mm, SDI1 (${sdi1}) dikali 2. SDI2 = ${sdi2}.`);
+      steps.push(`2. SDI2 (Lebar Retak ${laporan.lebar_retak}mm): Lebar retak > 3mm, SDI1 (${sdi1}) dikali 2. SDI2 = ${sdi2}.`);
     } else {
       sdi2 = sdi1;
-      steps.push(`2. SDI2 (Lebar Retak ${laporan.lebarRetak}mm): Lebar retak <= 3mm, SDI2 = SDI1 (${sdi2}).`);
+      steps.push(`2. SDI2 (Lebar Retak ${laporan.lebar_retak}mm): Lebar retak <= 3mm, SDI2 = SDI1 (${sdi2}).`);
     }
     sdiTotal = sdi2;
     steps.push(`   SDI Total saat ini: ${sdiTotal}`);
 
     // 3. Perhitungan SDI3 (Jumlah Lubang per Kilometer)
     let additionalSDI3 = 0;
-    if (laporan.jumlahLubang > 50) {
+    if (laporan.jumlah_lubang > 50) {
       additionalSDI3 = 225;
-      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlahLubang}/km): Jumlah lubang > 50/km, ditambah 225.`);
-    } else if (laporan.jumlahLubang >= 10 && laporan.jumlahLubang <= 50) {
+      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlah_lubang}/km): Jumlah lubang > 50/km, ditambah 225.`);
+    } else if (laporan.jumlah_lubang >= 10 && laporan.jumlah_lubang <= 50) {
       additionalSDI3 = 75;
-      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlahLubang}/km): Jumlah lubang 10-50/km, ditambah 75.`);
-    } else if (laporan.jumlahLubang > 0 && laporan.jumlahLubang < 10) {
+      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlah_lubang}/km): Jumlah lubang 10-50/km, ditambah 75.`);
+    } else if (laporan.jumlah_lubang > 0 && laporan.jumlah_lubang < 10) {
       additionalSDI3 = 15;
-      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlahLubang}/km): Jumlah lubang < 10/km, ditambah 15.`);
+      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlah_lubang}/km): Jumlah lubang < 10/km, ditambah 15.`);
     } else {
-      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlahLubang}/km): Tidak ada lubang, tidak ada penambahan.`);
+      steps.push(`3. SDI3 (Jumlah Lubang ${laporan.jumlah_lubang}/km): Tidak ada lubang, tidak ada penambahan.`);
     }
     sdi3 = sdi2 + additionalSDI3;
     sdiTotal = sdi3;
@@ -182,17 +182,17 @@ const SurveyDetailScreen = () => {
 
     // 4. Perhitungan SDI4 (Kedalaman Bekas Roda Rata-rata)
     let additionalSDI4 = 0;
-    if (laporan.alurRoda > 3) {
+    if (laporan.alur_roda > 3) {
       additionalSDI4 = 20;
-      steps.push(`4. SDI4 (Alur Roda ${laporan.alurRoda}cm): Alur roda > 3cm, ditambah 20.`);
-    } else if (laporan.alurRoda >= 1 && laporan.alurRoda <= 3) {
+      steps.push(`4. SDI4 (Alur Roda ${laporan.alur_roda}cm): Alur roda > 3cm, ditambah 20.`);
+    } else if (laporan.alur_roda >= 1 && laporan.alur_roda <= 3) {
       additionalSDI4 = 10;
-      steps.push(`4. SDI4 (Alur Roda ${laporan.alurRoda}cm): Alur roda 1-3cm, ditambah 10.`);
-    } else if (laporan.alurRoda > 0 && laporan.alurRoda < 1) {
+      steps.push(`4. SDI4 (Alur Roda ${laporan.alur_roda}cm): Alur roda 1-3cm, ditambah 10.`);
+    } else if (laporan.alur_roda > 0 && laporan.alur_roda < 1) {
       additionalSDI4 = 2.5;
-      steps.push(`4. SDI4 (Alur Roda ${laporan.alurRoda}cm): Alur roda < 1cm, ditambah 2.5.`);
+      steps.push(`4. SDI4 (Alur Roda ${laporan.alur_roda}cm): Alur roda < 1cm, ditambah 2.5.`);
     } else {
-      steps.push(`4. SDI4 (Alur Roda ${laporan.alurRoda}cm): Tidak ada alur roda, tidak ada penambahan.`);
+      steps.push(`4. SDI4 (Alur Roda ${laporan.alur_roda}cm): Tidak ada alur roda, tidak ada penambahan.`);
     }
     sdi4 = sdi3 + additionalSDI4;
     sdiTotal = sdi4;
@@ -234,7 +234,7 @@ const SurveyDetailScreen = () => {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
           {/* Basic Info Section */}
-          <View style={styles.sectionContainer}>
+          <View style={[styles.sectionContainer, { marginTop: 20 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="information-circle" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Informasi Dasar</Text>
@@ -242,19 +242,19 @@ const SurveyDetailScreen = () => {
 
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Nama Jalan:</Text>
-              <Text style={styles.detailValue}>{laporan.namaJalan}</Text>
+              <Text style={styles.detailValue}>{laporan.nama_jalan}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Jalan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenisJalan}</Text>
+              <Text style={styles.detailValue}>{laporan.jenis_jalan}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>STA Awal:</Text>
-              <Text style={styles.detailValue}>{laporan.staAwal}</Text>
+              <Text style={styles.detailValue}>{laporan.sta_awal}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>STA Akhir:</Text>
-              <Text style={styles.detailValue}>{laporan.staAkhir}</Text>
+              <Text style={styles.detailValue}>{laporan.sta_akhir}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Tanggal Laporan:</Text>
@@ -298,45 +298,45 @@ const SurveyDetailScreen = () => {
 
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Retak Dominan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenisRetakDominan}</Text>
+              <Text style={styles.detailValue}>{laporan.jenis_retak_dominan}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Luas Retak:</Text>
-              <Text style={styles.detailValue}>{laporan.luasRetak}% ({getHelpText('luasRetak', laporan.luasRetak)})</Text>
+              <Text style={styles.detailValue}>{laporan.luas_retak}% ({getHelpText('luas_retak', laporan.luas_retak)})</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Lebar Retak:</Text>
-              <Text style={styles.detailValue}>{laporan.lebarRetak.toFixed(1)} mm ({getHelpText('lebarRetak', laporan.lebarRetak)})</Text>
+              {/* PERBAIKAN: Gunakan optional chaining untuk mencegah crash */}
+              <Text style={styles.detailValue}>{laporan.lebar_retak?.toFixed(1) ?? 'N/A'} mm ({getHelpText('lebar_retak', laporan.lebar_retak)})</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jumlah Lubang:</Text>
-              <Text style={styles.detailValue}>{laporan.jumlahLubang} per km ({getHelpText('jumlahLubang', laporan.jumlahLubang)})</Text>
+              <Text style={styles.detailValue}>{laporan.jumlah_lubang} per km ({getHelpText('jumlah_lubang', laporan.jumlah_lubang)})</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Alur Roda:</Text>
-              <Text style={styles.detailValue}>{laporan.alurRoda.toFixed(1)} cm ({getHelpText('alurRoda', laporan.alurRoda)})</Text>
+              <Text style={styles.detailValue}>{laporan.alur_roda?.toFixed(1) ?? 'N/A'} cm ({getHelpText('alur_roda', laporan.alur_roda)})</Text>
             </View>
           </View>
 
           {/* Traffic & Technical Data Section */}
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
-              {/* Changed 'road' to 'car' as 'road' is not a valid Ionicons name */}
               <Ionicons name="car" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Data Teknis & Lalu Lintas</Text>
             </View>
 
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Volume LHR:</Text>
-              <Text style={styles.detailValue}>{laporan.volumeLHR} kendaraan/hari</Text>
+              <Text style={styles.detailValue}>{laporan.volume_lhr} kendaraan/hari</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Sumber Data:</Text>
-              <Text style={styles.detailValue}>{laporan.sumberData}</Text>
+              <Text style={styles.detailValue}>{laporan.sumber_data}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Perkerasan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenisPerkerasan}</Text>
+              <Text style={styles.detailValue}>{laporan.jenis_perkerasan}</Text>
             </View>
           </View>
 
@@ -348,32 +348,21 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Skor SDI:</Text>
-              <Text style={styles.detailValueWhite}>{laporan.prioritas.toFixed(2)}</Text>
+              {/* PERBAIKAN: Gunakan optional chaining untuk mencegah crash */}
+              <Text style={styles.detailValueWhite}>{laporan.prioritas?.toFixed(2) ?? 'N/A'}</Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Kategori:</Text>
-              {/* Display the category based on the SDI calculation logic */}
+              {/* Perbaikan: Menggunakan kategori dari data Supabase jika tersedia */}
               <Text style={styles.detailValueWhite}>
-                {(() => {
-                  const sdiTotal = laporan.prioritas; // Assuming laporan.prioritas is the calculated SDI
-                  if (sdiTotal < 50) return "Baik (Good)";
-                  if (sdiTotal >= 50 && sdiTotal < 100) return "Sedang (Fair)";
-                  if (sdiTotal >= 100 && sdiTotal < 150) return "Rusak Ringan (Poor)";
-                  return "Rusak Berat (Bad)";
-                })()}
+                {laporan.kategori}
               </Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Aksi Rekomendasi:</Text>
-              {/* Display the action based on the SDI calculation logic */}
+              {/* Perbaikan: Menggunakan aksi dari data Supabase jika tersedia */}
               <Text style={styles.detailValueWhite}>
-                {(() => {
-                  const sdiTotal = laporan.prioritas; // Assuming laporan.prioritas is the calculated SDI
-                  if (sdiTotal < 50) return "Pemeliharaan rutin; pembersihan, penutupan retak kecil, pemeriksaan berkala.";
-                  if (sdiTotal >= 50 && sdiTotal < 100) return "Pemeliharaan rutin intensif dan pemeliharaan berkala; penutupan retak, pengisian lubang kecil, overlay tipis.";
-                  if (sdiTotal >= 100 && sdiTotal < 150) return "Perbaikan terfokus; penambalan lubang/lapis tambal, perbaikan struktural ringan, overlay atau perkerasan ulang sebagian.";
-                  return "Rehabilitasi mayor atau rekonstruksi; penggantian lapisan permukaan/struktural secara menyeluruh untuk memulihkan kondisi jalan.";
-                })()}
+                {laporan.aksi}
               </Text>
             </View>
           </LinearGradient>
@@ -392,7 +381,7 @@ const SurveyDetailScreen = () => {
           </View>
 
           {/* Photo Section */}
-          {laporan.foto?.length > 0 && (
+          {laporan.foto_urls?.length > 0 && (
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="camera" size={24} color="#667eea" />
@@ -400,7 +389,7 @@ const SurveyDetailScreen = () => {
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photoScrollView}>
                 <View style={styles.photoScrollContent}>
-                  {laporan.foto.map((f, idx) => (
+                  {laporan.foto_urls.map((f, idx) => (
                     <View key={idx} style={styles.photoContainer}>
                       <Image source={{ uri: f }} style={styles.photoImage} />
                     </View>
@@ -408,7 +397,7 @@ const SurveyDetailScreen = () => {
                 </View>
               </ScrollView>
               <View style={styles.photoCountContainer}>
-                <Text style={styles.photoCountText}>📷 {laporan.foto.length} foto</Text>
+                <Text style={styles.photoCountText}>📷 {laporan.foto_urls.length} foto</Text>
               </View>
             </View>
           )}
@@ -421,7 +410,7 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Observasi & Informasi Tambahan:</Text>
-              <Text style={styles.detailValue}>{laporan.Keterangan || "Tidak ada keterangan tambahan."}</Text>
+              <Text style={styles.detailValue}>{laporan.keterangan || "Tidak ada keterangan tambahan."}</Text>
             </View>
           </View>
         </View>
@@ -463,7 +452,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 20,
     padding: 24,
-    marginTop: 24, // Use marginTop instead of margin for consistency
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -541,7 +530,6 @@ const styles = StyleSheet.create({
   mapButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
 
   priorityGradient: {
-    marginTop: 24,
     borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
@@ -549,6 +537,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
+    marginBottom: 20,
   },
   sectionHeaderWhite: {
     flexDirection: 'row',

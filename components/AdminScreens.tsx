@@ -2,8 +2,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+// IMPOR SUPABASE
+import { supabase } from './utils/supabase';
 
 const { width } = Dimensions.get('window');
 
@@ -14,40 +16,36 @@ type RootStackParamList = {
   SurveyMap: { laporan: LaporanData };
 };
 
+// PERBAIKAN: Sesuaikan interface dengan skema tabel Supabase
 interface LaporanData {
-  _id: string;
-  namaJalan: string;
+  id: string;
+  nama_jalan: string;
   lokasi: string;
-  jenisJalan: string;
-  staAwal: string;
-  staAkhir: string;
-  jenisRetakDominan: string;
-  luasRetak: number;
-  lebarRetak: number;
-  jumlahLubang: number;
-  alurRoda: number;
-  volumeLHR: string;
-  sumberData: string;
-  umur: string;
-  jenisPerkerasan: string;
-  foto: string[];
+  jenis_jalan: string;
+  sta_awal: string;
+  sta_akhir: string;
+  jenis_retak_dominan: string;
+  luas_retak: number;
+  lebar_retak: number;
+  jumlah_lubang: number;
+  alur_roda: number;
+  volume_lhr: string;
+  sumber_data: string;
+  jenis_perkerasan: string;
+  foto_urls: string[]; // Menggunakan nama kolom yang sesuai
   prioritas: number;
   kategori: string;
   aksi: string;
   tanggal: string;
   status: string;
-  createdAt: string;
-  updatedAt: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 interface KondisiStats {
   total: number;
-  sangatTinggi: number;
-  tinggi: number;
-  sedang: number;
-  rendah: number;
+  baik: number; // Kategori "Baik (Good)"
+  sedang: number; // Kategori "Sedang (Fair)"
+  rusakRingan: number; // Kategori "Rusak Ringan (Poor)"
+  rusakBerat: number; // Kategori "Rusak Berat (Bad)"
 }
 
 export default function HomeScreen() {
@@ -57,16 +55,22 @@ export default function HomeScreen() {
 
   const navigation = useNavigation<StackNavigationProp<RootStackParamList, 'Home'>>();
 
-  // Fetch data
-  const fetchLaporanData = async () => {
+  // PERBAIKAN: Gunakan klien Supabase untuk mengambil data
+  const fetchLaporanData = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch("https://klark-dev.up.railway.app/api/instance/h3fh50m/api/laporan");
+      const { data, error } = await supabase
+        .from('laporan_jalan') // Nama tabel Anda di Supabase
+        .select('*');
 
-      if (!response.ok) throw new Error("Failed to fetch data");
+      if (error) {
+        throw error;
+      }
 
-      const data = await response.json();
-      setLaporanData(data);
+      if (data) {
+        setLaporanData(data as LaporanData[]);
+      }
+
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -74,28 +78,28 @@ export default function HomeScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchLaporanData();
   }, []);
 
-  // Hitung statistik berdasarkan kategori
+  // PERBAIKAN: Hitung statistik berdasarkan kategori baru
   const calculateStats = (): KondisiStats => {
     const stats: KondisiStats = {
       total: laporanData.length,
-      sangatTinggi: 0,
-      tinggi: 0,
+      baik: 0,
       sedang: 0,
-      rendah: 0,
+      rusakRingan: 0,
+      rusakBerat: 0,
     };
 
     laporanData.forEach((laporan) => {
       const kategori = laporan.kategori.toLowerCase();
-      if (kategori.includes("sangat tinggi")) stats.sangatTinggi++;
-      else if (kategori.includes("tinggi")) stats.tinggi++;
+      if (kategori.includes("baik")) stats.baik++;
       else if (kategori.includes("sedang")) stats.sedang++;
-      else if (kategori.includes("rendah")) stats.rendah++;
+      else if (kategori.includes("rusak ringan")) stats.rusakRingan++;
+      else if (kategori.includes("rusak berat")) stats.rusakBerat++;
     });
 
     return stats;
@@ -103,6 +107,7 @@ export default function HomeScreen() {
 
   const stats = calculateStats();
 
+  // PERBAIKAN: Perbarui data card
   const cards = [
     {
       icon: "document-text",
@@ -112,40 +117,41 @@ export default function HomeScreen() {
       onPress: () => { },
     },
     {
-      icon: "flame",
-      color: "#c0392b",
-      title: "Sangat Parah",
-      value: `${stats.sangatTinggi} Laporan`,
+      icon: "checkmark-circle",
+      color: "#2ecc71", // Hijau
+      title: "Kondisi Baik",
+      value: `${stats.baik} Laporan`,
       onPress: () => { },
     },
     {
-      icon: "warning",
-      color: "#e74c3c",
-      title: "Rusak Parah",
-      value: `${stats.tinggi} Laporan`,
-      onPress: () => { },
-    },
-    {
-      icon: "construct",
-      color: "#f39c12",
-      title: "Rusak Sedang",
+      icon: "information-circle",
+      color: "#f1c40f", // Kuning
+      title: "Kondisi Sedang",
       value: `${stats.sedang} Laporan`,
       onPress: () => { },
     },
     {
-      icon: "checkmark-done",
-      color: "#27ae60",
+      icon: "alert-circle",
+      color: "#e67e22", // Oranye
       title: "Rusak Ringan",
-      value: `${stats.rendah} Laporan`,
+      value: `${stats.rusakRingan} Laporan`,
+      onPress: () => { },
+    },
+    {
+      icon: "warning",
+      color: "#e74c3c", // Merah
+      title: "Rusak Berat",
+      value: `${stats.rusakBerat} Laporan`,
       onPress: () => { },
     },
   ];
 
+  // PERBAIKAN: Perbarui data chart
   const chartData = [
-    { value: stats.sangatTinggi, color: "#c0392b", text: "Sangat Parah" },
-    { value: stats.tinggi, color: "#e74c3c", text: "Rusak Parah" },
-    { value: stats.sedang, color: "#f39c12", text: "Rusak Sedang" },
-    { value: stats.rendah, color: "#27ae60", text: "Rusak Ringan" },
+    { value: stats.baik, color: "#2ecc71", text: "Baik" },
+    { value: stats.sedang, color: "#f1c40f", text: "Sedang" },
+    { value: stats.rusakRingan, color: "#e67e22", text: "Ringan" },
+    { value: stats.rusakBerat, color: "#e74c3c", text: "Berat" },
   ].filter((item) => item.value > 0);
 
   if (loading) {
@@ -179,12 +185,12 @@ export default function HomeScreen() {
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" backgroundColor="#6c5ce7" />
-      
+
       {/* Header Section - Diperkecil */}
       <View style={styles.headerSection}>
         <Text style={styles.headerTitle}>Evaluasi Kondisi Jalan Raya</Text>
-        <Text style={styles.headerSubtitle}>Metode Fuzzy Logic</Text>
-        
+        <Text style={styles.headerSubtitle}>Metode SDI</Text>
+
         {/* Refresh */}
         <TouchableOpacity style={styles.refreshButton} onPress={fetchLaporanData}>
           <Ionicons name="refresh" size={18} color="#6c5ce7" />
@@ -228,18 +234,18 @@ export default function HomeScreen() {
                     {chartData.map((item, idx) => {
                       const maxValue = Math.max(...chartData.map(d => d.value));
                       const barHeight = maxValue > 0 ? (item.value / maxValue) * 120 : 0;
-                      
+
                       return (
                         <View key={idx} style={styles.barContainer}>
                           <View style={styles.barWrapper}>
-                            <View 
+                            <View
                               style={[
-                                styles.bar, 
-                                { 
+                                styles.bar,
+                                {
                                   height: barHeight,
-                                  backgroundColor: item.color 
+                                  backgroundColor: item.color
                                 }
-                              ]} 
+                              ]}
                             />
                           </View>
                           <Text style={styles.barValue}>{item.value}</Text>
@@ -248,7 +254,7 @@ export default function HomeScreen() {
                       );
                     })}
                   </View>
-                  
+
                   {/* Summary */}
                   <View style={styles.chartSummary}>
                     <View style={styles.summaryItem}>
@@ -258,7 +264,7 @@ export default function HomeScreen() {
                     <View style={styles.summaryItem}>
                       <Text style={styles.summaryLabel}>Kondisi Terparah</Text>
                       <Text style={styles.summaryValue}>
-                        {Math.max(stats.sangatTinggi, stats.tinggi, stats.sedang, stats.rendah)}
+                        {Math.max(stats.rusakBerat, stats.rusakRingan, stats.sedang, stats.baik)}
                       </Text>
                     </View>
                   </View>
@@ -298,39 +304,33 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
   },
-  scrollView: { 
-    flex: 1, 
-    backgroundColor: "#f8fafc" 
+  scrollView: {
+    flex: 1,
+    backgroundColor: "#f8fafc"
   },
-  container: { 
-    flex: 1, 
-    paddingTop: 20, 
-    paddingHorizontal: 20, 
-    paddingBottom: 30 
+  container: {
+    flex: 1,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 30
   },
-  centered: { 
-    justifyContent: "center", 
+  centered: {
+    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#f8fafc" 
+    backgroundColor: "#f8fafc"
   },
-  
+
   // Loading Styles
   loadingContainer: {
     alignItems: 'center',
-    backgroundColor: 'white',
     padding: 32,
     borderRadius: 16,
-    elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
   },
-  loadingText: { 
-    marginTop: 12, 
-    fontSize: 15, 
+  loadingText: {
+    marginTop: 12,
+    fontSize: 15,
     color: "#374151",
-    fontWeight: '600' 
+    fontWeight: '600'
   },
 
   // Error Styles
@@ -353,34 +353,34 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 6,
   },
-  errorText: { 
-    fontSize: 13, 
-    color: "#6b7280", 
+  errorText: {
+    fontSize: 13,
+    color: "#6b7280",
     textAlign: "center",
     marginBottom: 16,
     lineHeight: 18,
   },
 
   // Header Styles - diperkecil
-  headerTitle: { 
-    fontSize: 20, 
-    fontWeight: "700", 
-    textAlign: "center", 
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
     color: 'white',
     letterSpacing: 0.3,
     marginBottom: 4,
   },
-  headerSubtitle: { 
-    fontSize: 14, 
-    textAlign: "center", 
+  headerSubtitle: {
+    fontSize: 14,
+    textAlign: "center",
     color: 'rgba(255,255,255,0.9)',
     fontWeight: '500',
     marginBottom: 16,
   },
-  refreshButton: { 
-    flexDirection: "row", 
-    alignItems: "center", 
-    justifyContent: "center", 
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: 'white',
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -391,9 +391,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
   },
-  refreshText: { 
-    marginLeft: 6, 
-    color: "#6c5ce7", 
+  refreshText: {
+    marginLeft: 6,
+    color: "#6c5ce7",
     fontWeight: "600",
     fontSize: 13,
   },
@@ -414,16 +414,16 @@ const styles = StyleSheet.create({
   },
 
   // Card Styles
-  grid: { 
-    flexDirection: "row", 
-    flexWrap: "wrap", 
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     gap: 10,
   },
-  card: { 
+  card: {
     width: (width - 50) / 2,
-    borderRadius: 14, 
-    padding: 16, 
+    borderRadius: 14,
+    padding: 16,
     alignItems: "center",
     minHeight: 110,
     elevation: 4,
@@ -443,16 +443,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  cardTitle: { 
-    color: "white", 
-    fontWeight: "600", 
+  cardTitle: {
+    color: "white",
+    fontWeight: "600",
     fontSize: 12,
     textAlign: "center",
     marginBottom: 6,
     lineHeight: 14,
   },
-  cardValue: { 
-    color: "white", 
+  cardValue: {
+    color: "white",
     fontSize: 13,
     fontWeight: '600',
     textAlign: "center",
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
   },
 
   // Chart Styles - Bar Chart
-  chartContainer: { 
+  chartContainer: {
     backgroundColor: 'white',
     borderRadius: 16,
     padding: 20,
@@ -478,9 +478,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 6,
   },
-  chartTitle: { 
-    fontSize: 16, 
-    fontWeight: "700", 
+  chartTitle: {
+    fontSize: 16,
+    fontWeight: "700",
     marginBottom: 16,
     color: '#1f2937',
     textAlign: 'center',
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   chartContent: {
     alignItems: 'center',
   },
-  
+
   // Bar Chart Custom
   barChart: {
     flexDirection: 'row',
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     lineHeight: 12,
   },
-  
+
   // Chart Summary
   chartSummary: {
     flexDirection: 'row',
@@ -557,10 +557,10 @@ const styles = StyleSheet.create({
   },
 
   // Retry Button
-  retryButton: { 
-    backgroundColor: "#e74c3c", 
-    paddingHorizontal: 20, 
-    paddingVertical: 10, 
+  retryButton: {
+    backgroundColor: "#e74c3c",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
     elevation: 3,
     shadowColor: '#e74c3c',
@@ -568,16 +568,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
   },
-  retryButtonText: { 
-    color: "white", 
+  retryButtonText: {
+    color: "white",
     fontWeight: "600",
     fontSize: 14,
   },
 
   // No Data Styles
-  noDataContainer: { 
-    alignItems: "center", 
-    justifyContent: "center", 
+  noDataContainer: {
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 40,
   },
   noDataIconContainer: {
@@ -589,7 +589,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 12,
   },
-  noDataText: { 
+  noDataText: {
     fontSize: 14,
     color: "#6b7280",
     textAlign: "center",

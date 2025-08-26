@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.earns'
+    namespace 'com.sigapjalan.app'
     defaultConfig {
-        applicationId 'com.anonymous.earns'
+        applicationId 'com.sigapjalan.app'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

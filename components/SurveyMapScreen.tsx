@@ -3,61 +3,76 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import React, { useCallback, useEffect, useState } from "react";
 import {
+  ActionSheetIOS,
   ActivityIndicator,
-  FlatList,
+  Alert,
+  Dimensions,
+  FlatList, // Tambahkan Alert untuk Android
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Dimensions,
 } from "react-native";
+// IMPOR SUPABASE
+import { supabase } from './utils/supabase';
 
 const { width } = Dimensions.get('window');
 
+// PERBAIKAN: Sesuaikan interface dengan skema tabel Supabase
 interface Laporan {
-  _id: string;
-  namaJalan: string;
-  Keterangan: string;
+  id: string; // id adalah primary key di Supabase
+  nama_jalan: string;
+  keterangan: string;
   lokasi: string;
-  jenisJalan: string;
-  staAwal: string;
-  staAkhir: string;
-  jenisRetakDominan: string;
-  luasRetak: number;
-  lebarRetak: number;
-  jumlahLubang: number;
-  alurRoda: number;
-  volumeLHR: string;
-  sumberData: string;
-  jenisPerkerasan: string;
+  jenis_jalan: string;
+  sta_awal: string;
+  sta_akhir: string;
+  jenis_retak_dominan: string;
+  luas_retak: number;
+  lebar_retak: number;
+  jumlah_lubang: number;
+  alur_roda: number;
+  volume_lhr: string;
+  sumber_data: string;
+  jenis_perkerasan: string;
   kategori: string;
   aksi: string;
   prioritas: number;
   tanggal: string;
   status: string;
-  foto: string[];
+  foto_urls: string[]; // Menggunakan nama kolom yang sesuai
 }
 
 const SurveyListScreen = () => {
   const [data, setData] = useState<Laporan[]>([]);
   const [loading, setLoading] = useState(true);
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
 
-  // Fungsi fetch data
+  // PERBAIKAN: Fungsi fetch data untuk mengambil dari Supabase
   const fetchData = useCallback(async () => {
     try {
-      const response = await fetch("https://klark-dev.up.railway.app/api/instance/h3fh50m/api/laporan");
-      const json: Laporan[] = await response.json();
-      setData(json);
+      const { data, error } = await supabase
+        .from('laporan_jalan') // Nama tabel Anda
+        .select('*'); // Ambil semua kolom
+
+      if (error) {
+        throw error;
+      }
+
+      // Pastikan data tidak null sebelum set state
+      if (data) {
+        setData(data as Laporan[]);
+      }
+
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching data:", err);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // Fetch data pertama kali
     fetchData();
 
     // Set interval untuk auto refresh setiap 0.5 detik
@@ -69,13 +84,103 @@ const SurveyListScreen = () => {
     return () => clearInterval(intervalId);
   }, [fetchData]);
 
-  const getPriorityColor = (kategori: string) => {
+  // FUNGSI BARU UNTUK EDIT DAN HAPUS
+  const handleDelete = async (laporanId: string) => {
+    try {
+      const { error } = await supabase
+        .from('laporan_jalan')
+        .delete()
+        .eq('id', laporanId); // Hapus baris dengan ID yang sesuai
+
+      if (error) {
+        throw error;
+      }
+
+      Alert.alert("Berhasil", "Laporan berhasil dihapus.");
+      fetchData(); // Muat ulang data setelah penghapusan berhasil
+    } catch (err) {
+      console.error("Error deleting data:", err);
+      Alert.alert("Error", "Gagal menghapus laporan.");
+    }
+  };
+
+  const showDeleteConfirm = (laporan: Laporan) => {
+    Alert.alert(
+      "Konfirmasi Hapus",
+      `Apakah Anda yakin ingin menghapus laporan untuk "${laporan.nama_jalan}"?`,
+      [
+        {
+          text: "Batal",
+          style: "cancel",
+        },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: () => handleDelete(laporan.id),
+        },
+      ]
+    );
+  };
+
+  const handleEdit = (laporan: Laporan) => {
+    // Navigasi ke LaporScreen dan kirim data laporan sebagai parameter
+    // Di LaporScreen, Anda harus menangani data ini untuk mengisi form
+    navigation.navigate("Lapor", { laporanToEdit: laporan });
+  };
+
+  const showActionSheet = (laporan: Laporan) => {
+    const options = ["Batal", "Lihat Detail", "Edit", "Hapus"];
+    const destructiveButtonIndex = 3; // Index for 'Hapus'
+    const cancelButtonIndex = 0; // Index for 'Batal'
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex,
+          destructiveButtonIndex,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            navigation.navigate("SurveyDetail", { laporan });
+          } else if (buttonIndex === 2) {
+            handleEdit(laporan);
+          } else if (buttonIndex === destructiveButtonIndex) {
+            showDeleteConfirm(laporan);
+          }
+        }
+      );
+    } else {
+      Alert.alert("Opsi Laporan", `Pilih aksi untuk laporan "${laporan.nama_jalan}"`, [
+        {
+          text: "Lihat Detail",
+          onPress: () => navigation.navigate("SurveyDetail", { laporan }),
+        },
+        {
+          text: "Edit",
+          onPress: () => handleEdit(laporan),
+        },
+        {
+          text: "Hapus",
+          onPress: () => showDeleteConfirm(laporan),
+          style: "destructive",
+        },
+        {
+          text: "Batal",
+          style: "cancel",
+        },
+      ]);
+    }
+  };
+
+
+  const getPriorityColor = (kategori: string): readonly [string, string] => {
     switch (kategori) {
-      case "Baik (Good)": return ["#4CAF50", "#8BC34A"];
-      case "Sedang (Fair)": return ["#FFC107", "#FFEB3B"];
-      case "Rusak Ringan (Poor)": return ["#FF9800", "#FF5722"];
-      case "Rusak Berat (Bad)": return ["#F44336", "#D32F2F"];
-      default: return ["#9E9E9E", "#BDBDBD"];
+      case "Baik (Good)": return ["#4CAF50", "#8BC34A"] as const;
+      case "Sedang (Fair)": return ["#FFC107", "#FFEB3B"] as const;
+      case "Rusak Ringan (Poor)": return ["#FF9800", "#FF5722"] as const;
+      case "Rusak Berat (Bad)": return ["#F44336", "#D32F2F"] as const;
+      default: return ["#9E9E9E", "#BDBDBD"] as const;
     }
   };
 
@@ -94,7 +199,7 @@ const SurveyListScreen = () => {
       case "jalan_nasional": return "map";
       case "jalan_provinsi": return "trail-sign";
       case "jalan_kabupaten_kota": return "location";
-      default: return "map-outline"; // Menggunakan ikon yang pasti valid
+      default: return "map-outline";
     }
   };
 
@@ -105,30 +210,6 @@ const SurveyListScreen = () => {
       <Text style={styles.emptySubtext}>Data akan muncul setelah ada laporan baru</Text>
     </View>
   );
-
-  // --- PERBAIKAN: Fungsi renderHeader dihapus sepenuhnya ---
-  // const renderHeader = () => (
-  //   <View style={styles.listHeader}>
-  //     <View style={styles.statsContainer}>
-  //       <View style={styles.statItem}>
-  //         <Text style={styles.statNumber}>{data.filter(item => item.kategori === 'Baik (Good)').length}</Text>
-  //         <Text style={styles.statLabel}>Baik</Text>
-  //       </View>
-  //       <View style={styles.statItem}>
-  //         <Text style={styles.statNumber}>{data.filter(item => item.kategori === 'Sedang (Fair)').length}</Text>
-  //         <Text style={styles.statLabel}>Sedang</Text>
-  //       </View>
-  //       <View style={styles.statItem}>
-  //         <Text style={styles.statNumber}>{data.filter(item => item.kategori === 'Rusak Ringan (Poor)').length}</Text>
-  //         <Text style={styles.statLabel}>Rusak Ringan</Text>
-  //       </View>
-  //       <View style={styles.statItem}>
-  //         <Text style={styles.statNumber}>{data.filter(item => item.kategori === 'Rusak Berat (Bad)').length}</Text>
-  //         <Text style={styles.statLabel}>Rusak Berat</Text>
-  //       </View>
-  //     </View>
-  //   </View>
-  // );
 
   return (
     <View style={styles.container}>
@@ -157,30 +238,27 @@ const SurveyListScreen = () => {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(item) => item._id}
+          keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
-          // --- PERBAIKAN: ListHeaderComponent dihapus ---
-          // ListHeaderComponent={data.length > 0 ? renderHeader : null}
           ListEmptyComponent={renderEmptyState}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
-          renderItem={({ item, index }) => (
+          renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.card, { transform: [{ scale: 0.98 }] }]}
-              onPress={() =>
-                navigation.navigate("SurveyDetail" as never, { laporan: item } as never)
-              }
+              style={styles.card}
+              onPress={() => navigation.navigate("SurveyDetail", { laporan: item })}
+              onLongPress={() => showActionSheet(item)} // Tambahkan onLongPress di sini
               activeOpacity={0.7}
             >
               {/* Card Header */}
               <View style={styles.cardHeader}>
                 <View style={styles.cardHeaderLeft}>
                   <Ionicons
-                    name={getJenisJalanIcon(item.jenisJalan)}
+                    name={getJenisJalanIcon(item.jenis_jalan)}
                     size={20}
                     color="#667eea"
                   />
-                  <Text style={styles.cardTitle} numberOfLines={2}>{item.namaJalan}</Text>
+                  <Text style={styles.cardTitle} numberOfLines={2}>{item.nama_jalan}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#bbb" />
               </View>
@@ -189,11 +267,11 @@ const SurveyListScreen = () => {
               <View style={styles.cardContent}>
                 <View style={styles.infoRow}>
                   <Ionicons name="construct" size={16} color="#666" />
-                  <Text style={styles.infoText}>{item.jenisRetakDominan}</Text>
+                  <Text style={styles.infoText}>{item.jenis_retak_dominan}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Ionicons name="car" size={16} color="#666" />
-                  <Text style={styles.infoText}>LHR: {item.volumeLHR} kendaraan/hari</Text>
+                  <Text style={styles.infoText}>LHR: {item.volume_lhr} kendaraan/hari</Text>
                 </View>
               </View>
 
@@ -226,7 +304,7 @@ const SurveyListScreen = () => {
                 </View>
                 <View style={styles.photoIndicator}>
                   <Ionicons name="camera" size={14} color="#999" />
-                  <Text style={styles.photoCount}>{item.foto.length} foto</Text>
+                  <Text style={styles.photoCount}>{item?.foto_urls?.length} foto</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -284,7 +362,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.3)",
     left: -2,
     top: -2,
-    // Note: Animation would require Animated API
   },
   refreshText: {
     color: "#fff",
@@ -305,7 +382,7 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
   },
-  listHeader: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  listHeader: {
     backgroundColor: "#fff",
     borderRadius: 16,
     padding: 16,
@@ -316,26 +393,26 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  totalText: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  totalText: {
     fontSize: 18,
     fontWeight: "700",
     color: "#2d3748",
     marginBottom: 12,
     textAlign: "center",
   },
-  statsContainer: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  statsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
   },
-  statItem: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  statItem: {
     alignItems: "center",
   },
-  statNumber: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  statNumber: {
     fontSize: 20,
     fontWeight: "800",
     color: "#667eea",
   },
-  statLabel: { // Style ini tidak lagi digunakan jika renderHeader dihapus
+  statLabel: {
     fontSize: 10,
     color: "#666",
     marginTop: 2,

@@ -1,4 +1,4 @@
-package com.anonymous.earns
+package com.sigapjalan.app
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
