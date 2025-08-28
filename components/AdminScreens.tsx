@@ -206,7 +206,7 @@ export default function HomeScreen() {
             <View style={styles.grid}>
               {cards.map((item, index) => (
                 <TouchableOpacity
-                  key={index}
+                  key={index} //
                   style={[styles.card, { backgroundColor: item.color }]}
                   onPress={item.onPress}
                   activeOpacity={0.8}

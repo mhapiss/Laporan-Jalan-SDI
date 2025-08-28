@@ -279,7 +279,7 @@ const HomeScreen: React.FC = () => {
       >
         {/* SDI Overview - SE 22/SE/Db/2021 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Surface Distress Index (SDI)</Text>
+          <Text style={styles.sectionTitle}>Penilaian Jalan Surface Distress Index</Text>
           <View style={styles.overviewCard}>
             <View style={styles.regulationHeader}>
               <FileText size={20} color="#2563EB" />
@@ -288,7 +288,11 @@ const HomeScreen: React.FC = () => {
               </Text>
             </View>
             <Text style={styles.overviewDescription}>
-              **Surface Distress Index (SDI)** adalah metode penilaian kondisi jalan berdasarkan **pengamatan visual** kerusakan permukaan perkerasan jalan yang mengintegrasikan **4 parameter kunci** untuk menghasilkan indeks numerik kondisi jalan[25][32].
+            Surface Distress Index (SDI) adalah sistem penilaian kondisi jalan yang ditetapkan secara resmi oleh Direktorat Jenderal Bina Marga Kementerian PUPR sebagai standar nasional untuk evaluasi objektif dan terukur terhadap kondisi perkerasan jalan beraspal di seluruh Indonesia. SDI dikembangkan berdasarkan kebutuhan akan instrumen penilaian yang konsisten, akurat, dan dapat diandalkan untuk mengukur tingkat kerusakan infrastruktur jalan secara sistematis.
+
+Sistem penilaian ini mengintegrasikan empat parameter kunci kerusakan permukaan jalan yang dapat diamati secara visual di lapangan, yaitu persentase luas retak, rata-rata lebar retak, jumlah lubang per kilometer, dan kedalaman bekas roda kendaraan. Keempat parameter tersebut diolah melalui formula matematis yang telah divalidasi untuk menghasilkan nilai indeks numerik tunggal yang merepresentasikan kondisi keseluruhan segmen jalan yang dinilai.
+
+Penerapan SDI memungkinkan pemerintah daerah, konsultan, dan praktisi jalan untuk melakukan evaluasi kondisi jalan secara objektif, mengurangi subjektivitas dalam penilaian, serta menghasilkan data yang dapat digunakan untuk perencanaan prioritas pemeliharaan, alokasi anggaran infrastruktur, dan pengambilan keputusan strategis dalam pengelolaan aset jalan daerah. Sistem ini juga mendukung transparansi dan akuntabilitas dalam pengelolaan infrastruktur jalan publik melalui standarisasi prosedur penilaian yang dapat diverifikasi dan direproduksi.
             </Text>
             
             <View style={styles.keyFeatures}>

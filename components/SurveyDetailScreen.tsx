@@ -20,9 +20,9 @@ import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
-// PERBAIKAN: Sesuaikan interface dengan skema tabel Supabase
+// ✅ INTERFACE YANG DIPERLUAS DENGAN FIELD BARU
 interface Laporan {
-  id: string; // id adalah primary key di Supabase
+  _id: string;
   nama_jalan: string;
   keterangan: string;
   lokasi: string;
@@ -42,7 +42,14 @@ interface Laporan {
   prioritas: number;
   tanggal: string;
   status: string;
-  foto_urls: string[]; // Menggunakan nama kolom yang sesuai
+  foto_urls: string[];
+  // ✅ FIELD BARU YANG DITAMBAHKAN
+  tanggal_survey?: string;
+  waktu_survey?: string;
+  cuaca_survey?: string;
+  kondisi_drainase?: string;
+  kondisi_bahu?: string;
+  kondisi_markah?: string;
 }
 
 const SurveyDetailScreen = () => {
@@ -122,6 +129,37 @@ const SurveyDetailScreen = () => {
       default:
         return '';
     }
+  };
+
+  // ✅ FUNGSI HELPER UNTUK FORMAT DISPLAY VALUE
+  const formatDisplayValue = (value: string | undefined | null, defaultText: string = 'Tidak diketahui') => {
+    if (!value || value.trim() === '') return defaultText;
+    return value;
+  };
+
+  const formatConditionValue = (condition: string | undefined) => {
+    if (!condition) return 'Tidak diketahui';
+    
+    const conditionMap: { [key: string]: string } = {
+      'baik': '✅ Baik',
+      'sedang': '⚠️ Sedang', 
+      'buruk': '❌ Buruk',
+      'rusak': '⚠️ Rusak',
+      'tidak_ada': '🚫 Tidak Ada',
+      'jelas': '✅ Jelas',
+      'pudar': '⚠️ Pudar',
+      'hilang': '❌ Hilang',
+      'cerah': '☀️ Cerah',
+      'berawan': '⛅ Berawan',
+      'hujan_ringan': '🌦️ Hujan Ringan',
+      'hujan_lebat': '🌧️ Hujan Lebat',
+      'pagi': '🌅 Pagi',
+      'siang': '☀️ Siang',
+      'sore': '🌇 Sore',
+      'malam': '🌙 Malam'
+    };
+    
+    return conditionMap[condition] || condition;
   };
 
   // Fungsi untuk menjelaskan perhitungan SDI
@@ -233,8 +271,40 @@ const SurveyDetailScreen = () => {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
+          
+          {/* ✅ 1. METADATA SURVEY SECTION */}
+          {(laporan.tanggal_survey || laporan.waktu_survey || laporan.cuaca_survey) && (
+            <View style={[styles.sectionContainer, { marginTop: 20 }]}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="time" size={24} color="#667eea" />
+                <Text style={styles.sectionTitle}>📅 Metadata Survey</Text>
+              </View>
+              
+              {laporan.tanggal_survey && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Tanggal Survey:</Text>
+                  <Text style={styles.detailValue}>{formatDisplayValue(laporan.tanggal_survey)}</Text>
+                </View>
+              )}
+              
+              {laporan.waktu_survey && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Waktu Survey:</Text>
+                  <Text style={styles.detailValue}>{formatConditionValue(laporan.waktu_survey)}</Text>
+                </View>
+              )}
+              
+              {laporan.cuaca_survey && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Kondisi Cuaca:</Text>
+                  <Text style={styles.detailValue}>{formatConditionValue(laporan.cuaca_survey)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
           {/* Basic Info Section */}
-          <View style={[styles.sectionContainer, { marginTop: 20 }]}>
+          <View style={[styles.sectionContainer, { marginTop: (laporan.tanggal_survey || laporan.waktu_survey || laporan.cuaca_survey) ? 0 : 20 }]}>
             <View style={styles.sectionHeader}>
               <Ionicons name="information-circle" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Informasi Dasar</Text>
@@ -306,7 +376,6 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Lebar Retak:</Text>
-              {/* PERBAIKAN: Gunakan optional chaining untuk mencegah crash */}
               <Text style={styles.detailValue}>{laporan.lebar_retak?.toFixed(1) ?? 'N/A'} mm ({getHelpText('lebar_retak', laporan.lebar_retak)})</Text>
             </View>
             <View style={styles.detailItem}>
@@ -318,6 +387,37 @@ const SurveyDetailScreen = () => {
               <Text style={styles.detailValue}>{laporan.alur_roda?.toFixed(1) ?? 'N/A'} cm ({getHelpText('alur_roda', laporan.alur_roda)})</Text>
             </View>
           </View>
+
+          {/* ✅ 2. KONDISI INFRASTRUKTUR PENDUKUNG SECTION */}
+          {(laporan.kondisi_drainase || laporan.kondisi_bahu || laporan.kondisi_markah) && (
+            <View style={styles.sectionContainer}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="construct" size={24} color="#667eea" />
+                <Text style={styles.sectionTitle}>🛣️ Kondisi Infrastruktur Pendukung</Text>
+              </View>
+              
+              {laporan.kondisi_drainase && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Kondisi Drainase:</Text>
+                  <Text style={styles.detailValue}>{formatConditionValue(laporan.kondisi_drainase)}</Text>
+                </View>
+              )}
+              
+              {laporan.kondisi_bahu && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Kondisi Bahu Jalan:</Text>
+                  <Text style={styles.detailValue}>{formatConditionValue(laporan.kondisi_bahu)}</Text>
+                </View>
+              )}
+              
+              {laporan.kondisi_markah && (
+                <View style={styles.detailItem}>
+                  <Text style={styles.detailLabel}>Kondisi Marka Jalan:</Text>
+                  <Text style={styles.detailValue}>{formatConditionValue(laporan.kondisi_markah)}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Traffic & Technical Data Section */}
           <View style={styles.sectionContainer}>
@@ -348,22 +448,15 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Skor SDI:</Text>
-              {/* PERBAIKAN: Gunakan optional chaining untuk mencegah crash */}
               <Text style={styles.detailValueWhite}>{laporan.prioritas?.toFixed(2) ?? 'N/A'}</Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Kategori:</Text>
-              {/* Perbaikan: Menggunakan kategori dari data Supabase jika tersedia */}
-              <Text style={styles.detailValueWhite}>
-                {laporan.kategori}
-              </Text>
+              <Text style={styles.detailValueWhite}>{laporan.kategori}</Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Aksi Rekomendasi:</Text>
-              {/* Perbaikan: Menggunakan aksi dari data Supabase jika tersedia */}
-              <Text style={styles.detailValueWhite}>
-                {laporan.aksi}
-              </Text>
+              <Text style={styles.detailValueWhite}>{laporan.aksi}</Text>
             </View>
           </LinearGradient>
 

@@ -1,13 +1,14 @@
 // File: /LaporScreens.tsx
 
 import { Ionicons } from "@expo/vector-icons";
-import { Camera, MapView, PointAnnotation, UserLocation } from "@maplibre/maplibre-react-native";
+import { MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
 import Slider from '@react-native-community/slider';
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import React, { useEffect, useState } from "react";
 import {
@@ -27,9 +28,9 @@ import {
 } from "react-native";
 import { supabase } from './utils/supabase';
 
-// PERBAIKAN: Interface untuk laporan yang diterima dari navigasi
+// ✅ INTERFACE YANG DIPERLUAS
 interface LaporanToEdit {
-  _id: string; // Tambahkan ID laporan untuk mode edit
+  _id: string;
   nama_jalan: string;
   keterangan: string;
   lokasi: string;
@@ -44,11 +45,18 @@ interface LaporanToEdit {
   volume_lhr: string;
   sumber_data: string;
   jenis_perkerasan: string;
-  foto_urls: string[]; // Foto yang sudah ada di Supabase
+  foto_urls: string[];
+  // ✅ FIELDS BARU
+  tanggal_survey?: string;
+  waktu_survey?: string;
+  cuaca_survey?: string;
+  kondisi_drainase?: string;
+  kondisi_bahu?: string;
+  kondisi_markah?: string;
 }
 
 interface FormData {
-  _id?: string; // Tambahkan properti ID opsional
+  _id?: string;
   namaJalan: string;
   keterangan: string;
   lokasi: string;
@@ -63,7 +71,14 @@ interface FormData {
   volumeLHR: string;
   sumberData: string;
   jenisPerkerasan: string;
-  foto: string[]; // Foto yang sudah ada DAN foto baru
+  foto: string[];
+  // ✅ FIELDS BARU
+  tanggalSurvey: string;
+  waktuSurvey: string;
+  cuacaSurvey: string;
+  kondisiDrainase: string;
+  kondisiBahu: string;
+  kondisiMarkah: string;
 }
 
 interface HasilPrioritas {
@@ -77,6 +92,7 @@ interface Coordinate {
   longitude: number;
 }
 
+// ✅ INITIAL FORM DATA YANG DIPERLUAS
 const initialFormData: FormData = {
   namaJalan: "",
   keterangan: "",
@@ -93,6 +109,13 @@ const initialFormData: FormData = {
   sumberData: "",
   jenisPerkerasan: "",
   foto: [],
+  // ✅ DEFAULT VALUES BARU
+  tanggalSurvey: new Date().toLocaleDateString('id-ID'),
+  waktuSurvey: "",
+  cuacaSurvey: "",
+  kondisiDrainase: "",
+  kondisiBahu: "",
+  kondisiMarkah: "",
 };
 
 export default function LaporScreen() {
@@ -102,7 +125,7 @@ export default function LaporScreen() {
 
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [existingPhotos, setExistingPhotos] = useState<string[]>([]); // State untuk foto lama
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
 
   // State untuk modal maps
   const [isMapModalVisible, setIsMapModalVisible] = useState(false);
@@ -115,7 +138,23 @@ export default function LaporScreen() {
   const [zoomLevel, setZoomLevel] = useState(15);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Efek untuk mengisi form saat dalam mode edit
+  // ✅ AUTO-SET WAKTU SURVEY BERDASARKAN JAM SAAT INI
+  useEffect(() => {
+    const currentHour = new Date().getHours();
+    let waktuDefault = "";
+    if (currentHour >= 6 && currentHour < 12) waktuDefault = "pagi";
+    else if (currentHour >= 12 && currentHour < 18) waktuDefault = "siang";
+    else if (currentHour >= 18 && currentHour < 22) waktuDefault = "sore";
+    else waktuDefault = "malam";
+
+    setFormData(prev => ({ 
+      ...prev, 
+      waktuSurvey: waktuDefault,
+      tanggalSurvey: new Date().toLocaleDateString('id-ID')
+    }));
+  }, []);
+
+  // ✅ EFFECT UNTUK MODE EDIT YANG DIPERLUAS
   useEffect(() => {
     if (laporanToEdit) {
       setIsEditMode(true);
@@ -135,15 +174,23 @@ export default function LaporScreen() {
         volumeLHR: laporanToEdit.volume_lhr,
         sumberData: laporanToEdit.sumber_data,
         jenisPerkerasan: laporanToEdit.jenis_perkerasan,
-        foto: [], // Foto baru akan ditambahkan ke array ini
+        foto: [],
+        // ✅ LOAD DATA BARU JIKA ADA
+        tanggalSurvey: laporanToEdit.tanggal_survey || new Date().toLocaleDateString('id-ID'),
+        waktuSurvey: laporanToEdit.waktu_survey || "",
+        cuacaSurvey: laporanToEdit.cuaca_survey || "",
+        kondisiDrainase: laporanToEdit.kondisi_drainase || "",
+        kondisiBahu: laporanToEdit.kondisi_bahu || "",
+        kondisiMarkah: laporanToEdit.kondisi_markah || "",
       });
-      setExistingPhotos(laporanToEdit.foto_urls); // Simpan foto lama di state terpisah
+      setExistingPhotos(laporanToEdit.foto_urls);
 
-      // Set koordinat peta
       if (laporanToEdit.lokasi) {
         const [latitude, longitude] = laporanToEdit.lokasi.split(",").map(Number);
-        setSelectedCoordinate({ latitude, longitude });
-        setCenterCoordinate([longitude, latitude]);
+        if (!isNaN(latitude) && !isNaN(longitude)) {
+          setSelectedCoordinate({ latitude, longitude });
+          setCenterCoordinate([longitude, latitude]);
+        }
       }
     } else {
       setIsEditMode(false);
@@ -162,6 +209,7 @@ export default function LaporScreen() {
     setSelectedCoordinate(null);
   };
 
+  // ✅ FUNGSI YANG SAMA (location, photo, etc.)
   const getCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -169,6 +217,7 @@ export default function LaporScreen() {
         Alert.alert('Permission Denied', 'Izin lokasi diperlukan untuk menggunakan fitur ini');
         return;
       }
+
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
@@ -179,16 +228,20 @@ export default function LaporScreen() {
       };
 
       setCurrentLocation(coordinate);
-      setCenterCoordinate([coordinate.longitude, coordinate.latitude]);
-      setZoomLevel(15);
+      
+      if (!isNaN(coordinate.latitude) && !isNaN(coordinate.longitude)) {
+        setCenterCoordinate([coordinate.longitude, coordinate.latitude]);
+        setZoomLevel(15);
+      }
 
       if (!selectedCoordinate) {
         setSelectedCoordinate(coordinate);
       }
     } catch (error) {
       console.error('Location error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Gagal mendapatkan lokasi saat ini. ${errorMessage}. Pastikan GPS aktif dan coba lagi.`);
+      Alert.alert('Error', 'Gagal mendapatkan lokasi. Menggunakan lokasi default.');
+      setCenterCoordinate([118.0149, -2.5489]);
+      setZoomLevel(10);
     }
   };
 
@@ -205,10 +258,6 @@ export default function LaporScreen() {
     } else {
       Alert.alert('Error', 'Silakan pilih lokasi di peta terlebih dahulu');
     }
-  };
-
-  const resetToCurrentLocation = () => {
-    getCurrentLocation();
   };
 
   const addPhoto = async () => {
@@ -254,11 +303,11 @@ export default function LaporScreen() {
   const openCamera = async () => {
     try {
       const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: 'images',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.8,
-        base64: true,
       });
+      
       if (!result.canceled && result.assets && result.assets[0]) {
         const newPhoto = result.assets[0].uri;
         setFormData(prev => ({
@@ -268,21 +317,19 @@ export default function LaporScreen() {
       }
     } catch (error) {
       console.error('Camera error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Gagal mengambil foto dari kamera: ${errorMessage}`);
+      Alert.alert('Error', 'Gagal mengakses kamera');
     }
   };
-
+  
   const openImageLibrary = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: 'images',
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,
         quality: 0.8,
         allowsMultipleSelection: true,
-        base64: true,
       });
-
+  
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newPhotos = result.assets.map(asset => asset.uri);
         setFormData(prev => ({
@@ -293,12 +340,10 @@ export default function LaporScreen() {
       }
     } catch (error) {
       console.error('Gallery error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Gagal memilih foto dari galeri: ${errorMessage}`);
+      Alert.alert('Error', 'Gagal memilih foto dari galeri');
     }
   };
-
-  // FUNGSI BARU: Hapus foto lama
+  
   const removeExistingPhoto = (index: number) => {
     Alert.alert(
       'Hapus Foto', 'Apakah Anda yakin ingin menghapus foto ini?',
@@ -313,7 +358,6 @@ export default function LaporScreen() {
     );
   };
 
-  // FUNGSI BARU: Hapus foto baru
   const removeNewPhoto = (index: number) => {
     Alert.alert(
       'Hapus Foto', 'Apakah Anda yakin ingin menghapus foto ini?',
@@ -341,7 +385,6 @@ export default function LaporScreen() {
         }
       }
     }
-    // Periksa foto juga
     if (existingPhotos.length === 0 && formData.foto.length === 0) {
       Alert.alert("Error", "Minimal satu foto harus disertakan");
       return false;
@@ -404,6 +447,17 @@ export default function LaporScreen() {
     return { Z: sdiTotal, kategori, aksi };
   };
 
+  // ✅ FUNGSI UNTUK MENDAPATKAN WARNA BERDASARKAN KATEGORI SDI
+  const getSDIColors = (kategori: string): [string, string] => {
+    switch (kategori) {
+      case "Baik (Good)": return ["#10b981", "#34d399"];
+      case "Sedang (Fair)": return ["#f59e0b", "#fbbf24"];
+      case "Rusak Ringan (Poor)": return ["#f97316", "#fb923c"];
+      case "Rusak Berat (Bad)": return ["#ef4444", "#f87171"];
+      default: return ["#6b7280", "#9ca3af"];
+    }
+  };
+
   const uploadPhotosToSupabase = async (photoUris: string[]): Promise<string[]> => {
     const downloadUrls: string[] = [];
     try {
@@ -440,7 +494,7 @@ export default function LaporScreen() {
     }
   };
 
-  // FUNGSI BARU: Update ke Supabase
+  // ✅ UPDATE FUNCTION YANG DIPERLUAS
   const updateToSupabase = async (data: FormData, hasilPrioritas: HasilPrioritas) => {
     setIsSubmitting(true);
     try {
@@ -460,6 +514,13 @@ export default function LaporScreen() {
         alur_roda: data.alurRoda, volume_lhr: data.volumeLHR, sumber_data: data.sumberData,
         jenis_perkerasan: data.jenisPerkerasan, foto_urls: allFotoUrls, prioritas: hasilPrioritas.Z,
         kategori: hasilPrioritas.kategori, aksi: hasilPrioritas.aksi,
+        // ✅ TAMBAHKAN FIELDS BARU
+        tanggal_survey: data.tanggalSurvey,
+        waktu_survey: data.waktuSurvey,
+        cuaca_survey: data.cuacaSurvey,
+        kondisi_drainase: data.kondisiDrainase,
+        kondisi_bahu: data.kondisiBahu,
+        kondisi_markah: data.kondisiMarkah,
       };
 
       const { error } = await supabase.from('laporan_jalan').update(dataToUpdate).eq('_id', data._id);
@@ -479,7 +540,7 @@ export default function LaporScreen() {
     }
   };
 
-
+  // ✅ SAVE FUNCTION YANG DIPERLUAS
   const saveToSupabase = async (data: FormData, hasilPrioritas: HasilPrioritas, status: string) => {
     setIsSubmitting(true);
     try {
@@ -494,6 +555,13 @@ export default function LaporScreen() {
         alur_roda: data.alurRoda, volume_lhr: data.volumeLHR, sumber_data: data.sumberData,
         jenis_perkerasan: data.jenisPerkerasan, foto_urls: fotoUrls, prioritas: hasilPrioritas.Z,
         kategori: hasilPrioritas.kategori, aksi: hasilPrioritas.aksi, tanggal: new Date().toISOString(), status: status,
+        // ✅ TAMBAHKAN FIELDS BARU
+        tanggal_survey: data.tanggalSurvey,
+        waktu_survey: data.waktuSurvey,
+        cuaca_survey: data.cuacaSurvey,
+        kondisi_drainase: data.kondisiDrainase,
+        kondisi_bahu: data.kondisiBahu,
+        kondisi_markah: data.kondisiMarkah,
       };
 
       const { data: savedData, error } = await supabase.from('laporan_jalan').insert([dataToSave]).select();
@@ -509,7 +577,6 @@ export default function LaporScreen() {
       setIsSubmitting(false);
     }
   };
-
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
@@ -568,7 +635,10 @@ export default function LaporScreen() {
     }
   };
 
-  const allPhotos = [...existingPhotos, ...formData.foto]; // Gabungkan foto lama dan baru
+  const allPhotos = [...existingPhotos, ...formData.foto];
+  
+  // ✅ REAL-TIME SDI CALCULATION
+  const currentSDI = hitungPrioritas();
 
   return (
     <KeyboardAvoidingView
@@ -588,6 +658,77 @@ export default function LaporScreen() {
             <Text style={styles.subtitle}>Kondisi Jalan</Text>
             <View style={styles.decorativeLine} />
           </View>
+
+          {/* ✅ 1. SURVEY METADATA SECTION */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time" size={24} color="#667eea" />
+              <Text style={styles.sectionTitle}>📅 Metadata Survey</Text>
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Tanggal Survey</Text>
+              <TextInput 
+                value={formData.tanggalSurvey} 
+                style={[styles.textInput, { backgroundColor: '#f3f4f6' }]} 
+                editable={false}
+              />
+            </View>
+            
+            <View style={styles.rowContainer}>
+              <View style={{ flex: 1, marginRight: 8 }}>
+                <Text style={styles.inputLabel}>Waktu Survey</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker 
+                    selectedValue={formData.waktuSurvey} 
+                    onValueChange={(value) => updateFormData("waktuSurvey", value)} 
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="🌅 Pagi (06-12)" value="pagi" />
+                    <Picker.Item label="☀️ Siang (12-18)" value="siang" />
+                    <Picker.Item label="🌇 Sore (18-22)" value="sore" />
+                    <Picker.Item label="🌙 Malam (22-06)" value="malam" />
+                  </Picker>
+                </View>
+              </View>
+              <View style={{ flex: 1, marginLeft: 8 }}>
+                <Text style={styles.inputLabel}>Kondisi Cuaca</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker 
+                    selectedValue={formData.cuacaSurvey} 
+                    onValueChange={(value) => updateFormData("cuacaSurvey", value)} 
+                    style={styles.picker}
+                  >
+                    <Picker.Item label="Pilih Cuaca" value="" />
+                    <Picker.Item label="☀️ Cerah" value="cerah" />
+                    <Picker.Item label="⛅ Berawan" value="berawan" />
+                    <Picker.Item label="🌦️ Hujan Ringan" value="hujan_ringan" />
+                    <Picker.Item label="🌧️ Hujan Lebat" value="hujan_lebat" />
+                  </Picker>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* ✅ 2. REAL-TIME SDI PREVIEW */}
+          <LinearGradient 
+            colors={getSDIColors(currentSDI.kategori)} 
+            style={styles.sdiPreviewContainer}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={styles.sdiPreviewContent}>
+              <View style={styles.sdiPreviewHeader}>
+                <Ionicons name="analytics" size={24} color="#ffffff" />
+                <Text style={styles.sdiPreviewTitle}>📊 Nilai SDI Real-time</Text>
+              </View>
+              <View style={styles.sdiPreviewValues}>
+                <Text style={styles.sdiPreviewValue}>{currentSDI.Z.toFixed(1)}</Text>
+                <Text style={styles.sdiPreviewCategory}>{currentSDI.kategori}</Text>
+              </View>
+            </View>
+          </LinearGradient>
+
           {/* Basic Info Section */}
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
@@ -629,6 +770,7 @@ export default function LaporScreen() {
               </View>
             </View>
           </View>
+
           {/* Damage Assessment Section */}
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
@@ -700,6 +842,65 @@ export default function LaporScreen() {
               <Slider value={formData.alurRoda} onValueChange={(value) => updateFormData("alurRoda", value)} minimumValue={0} maximumValue={10} step={0.1} minimumTrackTintColor="#667eea" maximumTrackTintColor="#e5e7eb" />
             </View>
           </View>
+
+          {/* ✅ 3. KONDISI INFRASTRUKTUR PENDUKUNG */}
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="construct" size={24} color="#667eea" />
+              <Text style={styles.sectionTitle}>🛣️ Kondisi Infrastruktur Pendukung</Text>
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Kondisi Drainase</Text>
+              <View style={styles.pickerContainer}>
+                <Picker 
+                  selectedValue={formData.kondisiDrainase} 
+                  onValueChange={(value) => updateFormData("kondisiDrainase", value)} 
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Pilih Kondisi" value="" />
+                  <Picker.Item label="✅ Baik" value="baik" />
+                  <Picker.Item label="⚠️ Sedang" value="sedang" />
+                  <Picker.Item label="❌ Buruk" value="buruk" />
+                  <Picker.Item label="🚫 Tidak Ada" value="tidak_ada" />
+                </Picker>
+              </View>
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Kondisi Bahu Jalan</Text>
+              <View style={styles.pickerContainer}>
+                <Picker 
+                  selectedValue={formData.kondisiBahu} 
+                  onValueChange={(value) => updateFormData("kondisiBahu", value)} 
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Pilih Kondisi" value="" />
+                  <Picker.Item label="✅ Baik" value="baik" />
+                  <Picker.Item label="⚠️ Rusak" value="rusak" />
+                  <Picker.Item label="🚫 Tidak Ada" value="tidak_ada" />
+                </Picker>
+              </View>
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>Kondisi Marka Jalan</Text>
+              <View style={styles.pickerContainer}>
+                <Picker 
+                  selectedValue={formData.kondisiMarkah} 
+                  onValueChange={(value) => updateFormData("kondisiMarkah", value)} 
+                  style={styles.picker}
+                >
+                  <Picker.Item label="Pilih Kondisi" value="" />
+                  <Picker.Item label="✅ Jelas" value="jelas" />
+                  <Picker.Item label="⚠️ Pudar" value="pudar" />
+                  <Picker.Item label="❌ Hilang" value="hilang" />
+                  <Picker.Item label="🚫 Tidak Ada" value="tidak_ada" />
+                </Picker>
+              </View>
+            </View>
+          </View>
+
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <Ionicons name="car" size={24} color="#667eea" />
@@ -734,6 +935,7 @@ export default function LaporScreen() {
               </View>
             </View>
           </View>
+
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <Ionicons name="camera" size={24} color="#667eea" />
@@ -747,7 +949,6 @@ export default function LaporScreen() {
                   </View>
                   <Text style={styles.addPhotoText}>Tambah Foto</Text>
                 </TouchableOpacity>
-                {/* Tampilkan foto lama */}
                 {existingPhotos.map((photo, index) => (
                   <View key={`existing-${index}`} style={styles.photoContainer}>
                     <Image source={{ uri: photo }} style={styles.photoImage} />
@@ -756,7 +957,6 @@ export default function LaporScreen() {
                     </TouchableOpacity>
                   </View>
                 ))}
-                {/* Tampilkan foto baru */}
                 {formData.foto.map((photo, index) => (
                   <View key={`new-${index}`} style={styles.photoContainer}>
                     <Image source={{ uri: photo }} style={styles.photoImage} />
@@ -773,6 +973,7 @@ export default function LaporScreen() {
               </View>
             )}
           </View>
+
           <View style={styles.sectionContainer}>
             <View style={styles.sectionHeader}>
               <Ionicons name="document-text" size={24} color="#667eea" />
@@ -783,6 +984,7 @@ export default function LaporScreen() {
               <TextInput value={formData.keterangan} onChangeText={(value) => updateFormData("keterangan", value)} style={styles.textArea} multiline={true} numberOfLines={4} textAlignVertical="top" placeholder="Deskripsikan kondisi jalan, faktor penyebab kerusakan, atau informasi lain yang relevan..." />
             </View>
           </View>
+
           <View style={styles.actionButtons}>
             {!isEditMode && (
               <TouchableOpacity style={[styles.button, styles.draftButton]} onPress={handleDraft}>
@@ -804,7 +1006,7 @@ export default function LaporScreen() {
           </View>
         </View>
 
-        {/* Modal Peta Native */}
+        {/* Modal Peta */}
         <Modal
           visible={isMapModalVisible}
           animationType="slide"
@@ -823,39 +1025,63 @@ export default function LaporScreen() {
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
+            
             <MapView
               style={styles.map}
+              zoomLevel={zoomLevel}
+              centerCoordinate={centerCoordinate}
+              styleURL="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
               onPress={(event: any) => {
-                const { geometry } = event;
-                if (geometry && geometry.coordinates) {
-                  const [longitude, latitude] = geometry.coordinates;
-                  setSelectedCoordinate({ latitude, longitude });
+                try {
+                  const { geometry } = event;
+                  if (geometry?.coordinates && Array.isArray(geometry.coordinates)) {
+                    const [longitude, latitude] = geometry.coordinates;
+                    if (!isNaN(latitude) && !isNaN(longitude)) {
+                      setSelectedCoordinate({ latitude, longitude });
+                    }
+                  }
+                } catch (err) {
+                  console.error('Map press error:', err);
                 }
               }}
-              mapStyle="https://api.maptiler.com/maps/basic-v2/style.json?key=JiiHs6CPY8WFKYJJthkD"
+              logoEnabled={false}
+              attributionEnabled={false}
+              compassEnabled={true}
+              scaleBarEnabled={false}
             >
-              <Camera
-                zoomLevel={zoomLevel}
-                centerCoordinate={centerCoordinate}
-                animationMode="flyTo"
-                animationDuration={1000}
-              />
               {selectedCoordinate && (
                 <PointAnnotation
-                  id="selected-marker"
+                  id="selected-location"
                   coordinate={[selectedCoordinate.longitude, selectedCoordinate.latitude]}
                 >
-                  <Ionicons name="location" size={32} color="#ff6347" />
+                  <View style={{
+                    width: 20,
+                    height: 20,
+                    backgroundColor: '#ff6347',
+                    borderRadius: 10,
+                    borderWidth: 2,
+                    borderColor: 'white'
+                  }} />
                 </PointAnnotation>
               )}
+              
               {currentLocation && (
-                <UserLocation
-                  visible={true}
-                  animated={true}
-                  renderMode="normal"
-                />
+                <PointAnnotation
+                  id="user-location"
+                  coordinate={[currentLocation.longitude, currentLocation.latitude]}
+                >
+                  <View style={{
+                    width: 15,
+                    height: 15,
+                    backgroundColor: '#007AFF',
+                    borderRadius: 7.5,
+                    borderWidth: 2,
+                    borderColor: 'white'
+                  }} />
+                </PointAnnotation>
               )}
             </MapView>
+
             <View style={styles.mapButtonsContainer}>
               <TouchableOpacity style={[styles.mapButton, styles.mapCancelButton]} onPress={() => setIsMapModalVisible(false)}>
                 <Text style={styles.mapButtonText}>Batal</Text>
@@ -871,12 +1097,11 @@ export default function LaporScreen() {
   );
 }
 
+// ✅ STYLES YANG DIPERLUAS
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   scrollView: { flex: 1 },
-  scrollContent: {
-    paddingBottom: 40,
-  },
+  scrollContent: { paddingBottom: 40 },
   contentContainer: { paddingHorizontal: 20, paddingBottom: 40 },
   headerContainer: { alignItems: 'center', paddingTop: 60, paddingBottom: 30 },
   title: { fontSize: 32, fontWeight: '800', color: '#1e293b', textAlign: 'center', letterSpacing: -0.5 },
@@ -895,6 +1120,48 @@ const styles = StyleSheet.create({
   locationInputContainer: { flexDirection: 'row', alignItems: 'center' },
   locationInput: { flex: 1, marginRight: 12 },
   mapButton: { backgroundColor: '#667eea', borderRadius: 12, padding: 16, justifyContent: 'center', alignItems: 'center', shadowColor: '#667eea', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  
+  // ✅ SDI PREVIEW STYLES
+  sdiPreviewContainer: { 
+    borderRadius: 20, 
+    marginBottom: 24, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 6 }, 
+    shadowOpacity: 0.15, 
+    shadowRadius: 15, 
+    elevation: 10 
+  },
+  sdiPreviewContent: { 
+    padding: 24 
+  },
+  sdiPreviewHeader: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: 16 
+  },
+  sdiPreviewTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: '#ffffff', 
+    marginLeft: 8 
+  },
+  sdiPreviewValues: { 
+    alignItems: 'center' 
+  },
+  sdiPreviewValue: { 
+    fontSize: 48, 
+    fontWeight: '900', 
+    color: '#ffffff', 
+    textAlign: 'center' 
+  },
+  sdiPreviewCategory: { 
+    fontSize: 16, 
+    fontWeight: '600', 
+    color: '#ffffff', 
+    marginTop: 4, 
+    textAlign: 'center' 
+  },
+  
   sliderContainer: { marginBottom: 24, backgroundColor: '#f8fafc', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#e2e8f0' },
   sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sliderLabel: { fontSize: 16, fontWeight: '600', color: '#374151' },
