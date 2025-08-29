@@ -1,13 +1,12 @@
 // File: /LaporScreens.tsx
 
 import { Ionicons } from "@expo/vector-icons";
-import { MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
+import { Camera, MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
 import Slider from '@react-native-community/slider';
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { decode } from 'base64-arraybuffer';
 import * as FileSystem from 'expo-file-system';
-import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import React, { useEffect, useState } from "react";
@@ -26,6 +25,7 @@ import {
   TouchableOpacity,
   View
 } from "react-native";
+import { launchCamera, launchImageLibrary } from 'react-native-image-picker';
 import { supabase } from './utils/supabase';
 
 // ✅ INTERFACE YANG DIPERLUAS
@@ -147,8 +147,8 @@ export default function LaporScreen() {
     else if (currentHour >= 18 && currentHour < 22) waktuDefault = "sore";
     else waktuDefault = "malam";
 
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       waktuSurvey: waktuDefault,
       tanggalSurvey: new Date().toLocaleDateString('id-ID')
     }));
@@ -228,7 +228,7 @@ export default function LaporScreen() {
       };
 
       setCurrentLocation(coordinate);
-      
+
       if (!isNaN(coordinate.latitude) && !isNaN(coordinate.longitude)) {
         setCenterCoordinate([coordinate.longitude, coordinate.latitude]);
         setZoomLevel(15);
@@ -262,16 +262,6 @@ export default function LaporScreen() {
 
   const addPhoto = async () => {
     try {
-      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (cameraStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Aplikasi memerlukan izin kamera untuk mengambil foto');
-        return;
-      }
-      if (mediaStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Aplikasi memerlukan izin galeri untuk memilih foto');
-        return;
-      }
       if (Platform.OS === 'ios') {
         ActionSheetIOS.showActionSheetWithOptions(
           { options: ['Batal', 'Ambil Foto', 'Pilih dari Galeri'], cancelButtonIndex: 0 },
@@ -301,49 +291,39 @@ export default function LaporScreen() {
   };
 
   const openCamera = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-      });
-      
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const newPhoto = result.assets[0].uri;
-        setFormData(prev => ({
-          ...prev, foto: [...prev.foto, newPhoto]
-        }));
-        Alert.alert('Sukses', 'Foto berhasil ditambahkan');
-      }
-    } catch (error) {
-      console.error('Camera error:', error);
-      Alert.alert('Error', 'Gagal mengakses kamera');
+    // `launchCamera` mengembalikan objek response
+    const response = await launchCamera({
+      mediaType: 'photo',
+      quality: 0.8,
+    });
+
+    if (response.didCancel) {
+      console.log('Pengguna membatalkan pengambilan foto');
+    } else if (response.errorCode) {
+      console.error('Error saat mengambil foto:', response.errorCode);
+    } else if (response.assets && response.assets[0]) {
+      const newPhoto: any = response.assets[0].uri;
+      setFormData(prev => ({ ...prev, foto: [...prev.foto, newPhoto] }));
     }
   };
-  
+
   const openImageLibrary = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-        allowsMultipleSelection: true,
-      });
-  
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const newPhotos = result.assets.map(asset => asset.uri);
-        setFormData(prev => ({
-          ...prev,
-          foto: [...prev.foto, ...newPhotos]
-        }));
-        Alert.alert('Sukses', `${newPhotos.length} foto berhasil ditambahkan`);
-      }
-    } catch (error) {
-      console.error('Gallery error:', error);
-      Alert.alert('Error', 'Gagal memilih foto dari galeri');
+    const response = await launchImageLibrary({
+      mediaType: 'photo',
+      selectionLimit: 0, // 0 artinya tidak terbatas
+      quality: 0.8,
+    });
+
+    if (response.didCancel) {
+      console.log('Pengguna membatalkan pemilihan foto');
+    } else if (response.errorCode) {
+      console.error('Error saat memilih foto:', response.errorCode);
+    } else if (response.assets && response.assets.length > 0) {
+      const newPhotos: any = response.assets.map(asset => asset.uri);
+      setFormData(prev => ({ ...prev, foto: [...prev.foto, ...newPhotos] }));
     }
   };
-  
+
   const removeExistingPhoto = (index: number) => {
     Alert.alert(
       'Hapus Foto', 'Apakah Anda yakin ingin menghapus foto ini?',
@@ -636,7 +616,7 @@ export default function LaporScreen() {
   };
 
   const allPhotos = [...existingPhotos, ...formData.foto];
-  
+
   // ✅ REAL-TIME SDI CALCULATION
   const currentSDI = hitungPrioritas();
 
@@ -665,23 +645,23 @@ export default function LaporScreen() {
               <Ionicons name="time" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>📅 Metadata Survey</Text>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Tanggal Survey</Text>
-              <TextInput 
-                value={formData.tanggalSurvey} 
-                style={[styles.textInput, { backgroundColor: '#f3f4f6' }]} 
+              <TextInput
+                value={formData.tanggalSurvey}
+                style={[styles.textInput, { backgroundColor: '#f3f4f6' }]}
                 editable={false}
               />
             </View>
-            
+
             <View style={styles.rowContainer}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.inputLabel}>Waktu Survey</Text>
                 <View style={styles.pickerContainer}>
-                  <Picker 
-                    selectedValue={formData.waktuSurvey} 
-                    onValueChange={(value) => updateFormData("waktuSurvey", value)} 
+                  <Picker
+                    selectedValue={formData.waktuSurvey}
+                    onValueChange={(value) => updateFormData("waktuSurvey", value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="🌅 Pagi (06-12)" value="pagi" />
@@ -694,9 +674,9 @@ export default function LaporScreen() {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={styles.inputLabel}>Kondisi Cuaca</Text>
                 <View style={styles.pickerContainer}>
-                  <Picker 
-                    selectedValue={formData.cuacaSurvey} 
-                    onValueChange={(value) => updateFormData("cuacaSurvey", value)} 
+                  <Picker
+                    selectedValue={formData.cuacaSurvey}
+                    onValueChange={(value) => updateFormData("cuacaSurvey", value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="Pilih Cuaca" value="" />
@@ -711,8 +691,8 @@ export default function LaporScreen() {
           </View>
 
           {/* ✅ 2. REAL-TIME SDI PREVIEW */}
-          <LinearGradient 
-            colors={getSDIColors(currentSDI.kategori)} 
+          <LinearGradient
+            colors={getSDIColors(currentSDI.kategori)}
             style={styles.sdiPreviewContainer}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -849,13 +829,13 @@ export default function LaporScreen() {
               <Ionicons name="construct" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>🛣️ Kondisi Infrastruktur Pendukung</Text>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Drainase</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiDrainase} 
-                  onValueChange={(value) => updateFormData("kondisiDrainase", value)} 
+                <Picker
+                  selectedValue={formData.kondisiDrainase}
+                  onValueChange={(value) => updateFormData("kondisiDrainase", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -866,13 +846,13 @@ export default function LaporScreen() {
                 </Picker>
               </View>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Bahu Jalan</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiBahu} 
-                  onValueChange={(value) => updateFormData("kondisiBahu", value)} 
+                <Picker
+                  selectedValue={formData.kondisiBahu}
+                  onValueChange={(value) => updateFormData("kondisiBahu", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -882,13 +862,13 @@ export default function LaporScreen() {
                 </Picker>
               </View>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Marka Jalan</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiMarkah} 
-                  onValueChange={(value) => updateFormData("kondisiMarkah", value)} 
+                <Picker
+                  selectedValue={formData.kondisiMarkah}
+                  onValueChange={(value) => updateFormData("kondisiMarkah", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -1025,12 +1005,10 @@ export default function LaporScreen() {
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
-            
+
             <MapView
               style={styles.map}
-              zoomLevel={zoomLevel}
-              centerCoordinate={centerCoordinate}
-              styleURL="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
+              mapStyle="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
               onPress={(event: any) => {
                 try {
                   const { geometry } = event;
@@ -1047,8 +1025,15 @@ export default function LaporScreen() {
               logoEnabled={false}
               attributionEnabled={false}
               compassEnabled={true}
-              scaleBarEnabled={false}
+              zoomEnabled={true}
             >
+              <Camera
+                zoomLevel={zoomLevel}
+                centerCoordinate={centerCoordinate}
+                animationMode="easeTo"
+                animationDuration={500}
+              />
+
               {selectedCoordinate && (
                 <PointAnnotation
                   id="selected-location"
@@ -1064,7 +1049,7 @@ export default function LaporScreen() {
                   }} />
                 </PointAnnotation>
               )}
-              
+
               {currentLocation && (
                 <PointAnnotation
                   id="user-location"
@@ -1120,48 +1105,48 @@ const styles = StyleSheet.create({
   locationInputContainer: { flexDirection: 'row', alignItems: 'center' },
   locationInput: { flex: 1, marginRight: 12 },
   mapButton: { backgroundColor: '#667eea', borderRadius: 12, padding: 16, justifyContent: 'center', alignItems: 'center', shadowColor: '#667eea', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  
+
   // ✅ SDI PREVIEW STYLES
-  sdiPreviewContainer: { 
-    borderRadius: 20, 
-    marginBottom: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 6 }, 
-    shadowOpacity: 0.15, 
-    shadowRadius: 15, 
-    elevation: 10 
+  sdiPreviewContainer: {
+    borderRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 10
   },
-  sdiPreviewContent: { 
-    padding: 24 
+  sdiPreviewContent: {
+    padding: 24
   },
-  sdiPreviewHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 16 
+  sdiPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16
   },
-  sdiPreviewTitle: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: '#ffffff', 
-    marginLeft: 8 
+  sdiPreviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginLeft: 8
   },
-  sdiPreviewValues: { 
-    alignItems: 'center' 
+  sdiPreviewValues: {
+    alignItems: 'center'
   },
-  sdiPreviewValue: { 
-    fontSize: 48, 
-    fontWeight: '900', 
-    color: '#ffffff', 
-    textAlign: 'center' 
+  sdiPreviewValue: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center'
   },
-  sdiPreviewCategory: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#ffffff', 
-    marginTop: 4, 
-    textAlign: 'center' 
+  sdiPreviewCategory: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginTop: 4,
+    textAlign: 'center'
   },
-  
+
   sliderContainer: { marginBottom: 24, backgroundColor: '#f8fafc', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#e2e8f0' },
   sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sliderLabel: { fontSize: 16, fontWeight: '600', color: '#374151' },
