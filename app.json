@@ -9,7 +9,12 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Aplikasi membutuhkan akses kamera untuk mengambil foto kondisi jalan.",
+        "NSLocationWhenInUseUsageDescription": "Aplikasi memerlukan akses lokasi untuk menentukan posisi jalan.",
+        "NSPhotoLibraryUsageDescription": "Aplikasi membutuhkan akses galeri untuk memilih foto."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -20,8 +25,6 @@
       "package": "com.sigapjalan.app",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
@@ -54,16 +57,18 @@
       [
         "expo-location",
         {
-          "locationForegroundPermission": "Aplikasi memerlukan akses lokasi untuk menentukan posisi jalan."
+          "locationAlwaysAndWhenInUsePermission": "Aplikasi memerlukan akses lokasi untuk menentukan posisi jalan.",
+          "locationWhenInUsePermission": "Aplikasi memerlukan akses lokasi untuk menentukan posisi jalan."
         }
-      ],
-      "expo-maps"
+      ]
     ],
     "experiments": {
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
+      "router": {
+        "origin": false
+      },
       "eas": {
         "projectId": "0e04b942-ee7b-421b-8a28-7f1f4b3c72b4"
       }

@@ -109,7 +109,7 @@ export default function LoginScreen() {
             <Text style={styles.welcomeSubtitle}>Sistem Pelaporan Jalan Raya</Text>
           </View>
 
-          {/* Image Section - DIPERBESAR */}
+          {/* Image Section - DIPERKECIL DAN TANPA BOX */}
           <View style={styles.imageContainer}>
             <Image
               source={require('../assets/images/land-survey-civil-engineer-working.png')}
@@ -362,29 +362,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '500',
   },
-  // IMAGE SECTION - DIPERBESAR
+  // IMAGE SECTION - DIPERKECIL DAN TANPA BOX
   imageContainer: {
     alignItems: 'center',
-    marginVertical: 25,
-    paddingHorizontal: 10,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 28,
-    paddingVertical: 30,
-    marginHorizontal: 15,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.2)',
+    marginVertical: 15,
+    paddingHorizontal: 20,
   },
   image: {
-    width: width * 0.9, // 90% lebar layar
-    height: 320, // Tinggi lebih besar
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 12,
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.4)',
+    width: width * 0.5, // 50% lebar layar (diperkecil dari 90%)
+    height: 160, // Tinggi diperkecil dari 320
   },
   cardContainer: {
     paddingHorizontal: 20,

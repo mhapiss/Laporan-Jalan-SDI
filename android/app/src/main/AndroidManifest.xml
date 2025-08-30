@@ -30,6 +30,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="sigap-jalan"/>
+        <data android:scheme="exp+sigap-jalan"/>
       </intent-filter>
     </activity>
   </application>

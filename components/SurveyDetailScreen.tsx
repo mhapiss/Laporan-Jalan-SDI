@@ -1,5 +1,3 @@
-// File: /SurveyDetailScreen.tsx
-
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -20,7 +18,6 @@ import { WebView } from "react-native-webview";
 
 const { width } = Dimensions.get("window");
 
-// ✅ INTERFACE YANG DIPERLUAS DENGAN FIELD BARU
 interface Laporan {
   _id: string;
   nama_jalan: string;
@@ -43,7 +40,6 @@ interface Laporan {
   tanggal: string;
   status: string;
   foto_urls: string[];
-  // ✅ FIELD BARU YANG DITAMBAHKAN
   tanggal_survey?: string;
   waktu_survey?: string;
   cuaca_survey?: string;
@@ -73,10 +69,12 @@ const SurveyDetailScreen = () => {
   const openInMaps = () => {
     if (lat && lng) {
       const url = Platform.select({
-        ios: `maps:${lat},${lng}?q=${laporan.nama_jalan}`,
-        android: `geo:${lat},${lng}?q=${laporan.nama_jalan}`,
+        ios: `maps:${lat},${lng}?q=${encodeURIComponent(laporan.nama_jalan)}`,
+        android: `geo:${lat},${lng}?q=${encodeURIComponent(laporan.nama_jalan)}`,
       });
-      if (url) Linking.openURL(url).catch(() => Alert.alert("Error", "Tidak bisa buka maps"));
+      if (url) {
+        Linking.openURL(url).catch(() => Alert.alert("Error", "Tidak bisa buka maps"));
+      }
     }
   };
 
@@ -93,76 +91,70 @@ const SurveyDetailScreen = () => {
         <script>
           var map = L.map('map').setView([${lat}, ${lng}], 16);
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-          L.marker([${lat}, ${lng}]).addTo(map).bindPopup('${laporan.nama_jalan}').openPopup();
+          L.marker([${lat}, ${lng}]).addTo(map).bindPopup('${laporan.nama_jalan.replace(/'/g, "\\'")}').openPopup();
         </script>
       </body>
     </html>
   `;
 
-  // Helper function untuk mendapatkan teks bantuan
   const getHelpText = (field: string, value: number): string => {
     switch (field) {
-      case 'luas_retak':
-        if (value === 0) return 'Tidak Ada';
-        if (value < 10) return '< 10%';
-        if (value >= 10 && value <= 30) return '10 - 30%';
-        if (value > 30) return '> 30%';
-        return '';
-      case 'lebar_retak':
-        if (value === 0) return 'Tidak Ada';
-        if (value < 1) return '< 1mm';
-        if (value >= 1 && value <= 3) return '1 - 3 mm';
-        if (value > 3) return '> 3mm';
-        return '';
-      case 'jumlah_lubang':
-        if (value === 0) return 'Tidak Ada';
-        if (value < 10) return '< 10 per km';
-        if (value >= 10 && value <= 50) return '10 - 50 per km';
-        if (value > 50) return '> 50 per km';
-        return '';
-      case 'alur_roda':
-        if (value === 0) return 'Tidak Ada';
-        if (value < 1) return '< 1 cm';
-        if (value >= 1 && value <= 3) return '1 - 3 cm';
-        if (value > 3) return '> 3 cm';
-        return '';
+      case "luas_retak":
+        if (value === 0) return "Tidak Ada";
+        if (value < 10) return "< 10%";
+        if (value >= 10 && value <= 30) return "10 - 30%";
+        if (value > 30) return "> 30%";
+        return "";
+      case "lebar_retak":
+        if (value === 0) return "Tidak Ada";
+        if (value < 1) return "< 1mm";
+        if (value >= 1 && value <= 3) return "1 - 3 mm";
+        if (value > 3) return "> 3mm";
+        return "";
+      case "jumlah_lubang":
+        if (value === 0) return "Tidak Ada";
+        if (value < 10) return "< 10 per km";
+        if (value >= 10 && value <= 50) return "10 - 50 per km";
+        if (value > 50) return "> 50 per km";
+        return "";
+      case "alur_roda":
+        if (value === 0) return "Tidak Ada";
+        if (value < 1) return "< 1 cm";
+        if (value >= 1 && value <= 3) return "1 - 3 cm";
+        if (value > 3) return "> 3 cm";
+        return "";
       default:
-        return '';
+        return "";
     }
   };
 
-  // ✅ FUNGSI HELPER UNTUK FORMAT DISPLAY VALUE
-  const formatDisplayValue = (value: string | undefined | null, defaultText: string = 'Tidak diketahui') => {
-    if (!value || value.trim() === '') return defaultText;
-    return value;
+  const formatDisplayValue = (value: string | undefined | null, defaultText: string = "Tidak diketahui") => {
+    return value && value.trim() ? value : defaultText;
   };
 
   const formatConditionValue = (condition: string | undefined) => {
-    if (!condition) return 'Tidak diketahui';
-    
+    if (!condition) return "Tidak diketahui";
     const conditionMap: { [key: string]: string } = {
-      'baik': '✅ Baik',
-      'sedang': '⚠️ Sedang', 
-      'buruk': '❌ Buruk',
-      'rusak': '⚠️ Rusak',
-      'tidak_ada': '🚫 Tidak Ada',
-      'jelas': '✅ Jelas',
-      'pudar': '⚠️ Pudar',
-      'hilang': '❌ Hilang',
-      'cerah': '☀️ Cerah',
-      'berawan': '⛅ Berawan',
-      'hujan_ringan': '🌦️ Hujan Ringan',
-      'hujan_lebat': '🌧️ Hujan Lebat',
-      'pagi': '🌅 Pagi',
-      'siang': '☀️ Siang',
-      'sore': '🌇 Sore',
-      'malam': '🌙 Malam'
+      baik: "✅ Baik",
+      sedang: "⚠️ Sedang",
+      buruk: "❌ Buruk",
+      rusak: "⚠️ Rusak",
+      tidak_ada: "🚫 Tidak Ada",
+      jelas: "✅ Jelas",
+      pudar: "⚠️ Pudar",
+      hilang: "❌ Hilang",
+      cerah: "☀️ Cerah",
+      berawan: "⛅ Berawan",
+      hujan_ringan: "🌦️ Hujan Ringan",
+      hujan_lebat: "🌧️ Hujan Lebat",
+      pagi: "🌅 Pagi",
+      siang: "☀️ Siang",
+      sore: "🌇 Sore",
+      malam: "🌙 Malam",
     };
-    
-    return conditionMap[condition] || condition;
+    return conditionMap[condition.toLowerCase()] || condition;
   };
 
-  // Fungsi untuk menjelaskan perhitungan SDI
   const explainSDICalculation = (laporan: Laporan) => {
     let sdiTotal = 0;
     let sdi1 = 0;
@@ -170,9 +162,9 @@ const SurveyDetailScreen = () => {
     let sdi3 = 0;
     let sdi4 = 0;
 
-    const steps = [];
+    const steps: string[] = [];
 
-    // 1. Perhitungan SDI1 (Persentase Luas Retak)
+    // SDI1: Luas Retak
     if (laporan.luas_retak === 0) {
       sdi1 = 0;
       steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Tidak ada retak, SDI1 = 0.`);
@@ -182,17 +174,19 @@ const SurveyDetailScreen = () => {
     } else if (laporan.luas_retak >= 10 && laporan.luas_retak <= 30) {
       sdi1 = 20;
       steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Luas retak 10-30%, SDI1 = 20.`);
-    } else if (laporan.luas_retak > 30) {
+    } else {
       sdi1 = 40;
       steps.push(`1. SDI1 (Luas Retak ${laporan.luas_retak}%): Luas retak > 30%, SDI1 = 40.`);
     }
     sdiTotal = sdi1;
     steps.push(`   SDI Total saat ini: ${sdiTotal}`);
 
-    // 2. Perhitungan SDI2 (Lebar Retak Rata-rata)
+    // SDI2: Lebar Retak
     if (laporan.lebar_retak > 3) {
       sdi2 = sdi1 * 2;
-      steps.push(`2. SDI2 (Lebar Retak ${laporan.lebar_retak}mm): Lebar retak > 3mm, SDI1 (${sdi1}) dikali 2. SDI2 = ${sdi2}.`);
+      steps.push(
+        `2. SDI2 (Lebar Retak ${laporan.lebar_retak}mm): Lebar retak > 3mm, SDI1 (${sdi1}) dikali 2. SDI2 = ${sdi2}.`
+      );
     } else {
       sdi2 = sdi1;
       steps.push(`2. SDI2 (Lebar Retak ${laporan.lebar_retak}mm): Lebar retak <= 3mm, SDI2 = SDI1 (${sdi2}).`);
@@ -200,7 +194,7 @@ const SurveyDetailScreen = () => {
     sdiTotal = sdi2;
     steps.push(`   SDI Total saat ini: ${sdiTotal}`);
 
-    // 3. Perhitungan SDI3 (Jumlah Lubang per Kilometer)
+    // SDI3: Jumlah Lubang
     let additionalSDI3 = 0;
     if (laporan.jumlah_lubang > 50) {
       additionalSDI3 = 225;
@@ -218,7 +212,7 @@ const SurveyDetailScreen = () => {
     sdiTotal = sdi3;
     steps.push(`   SDI Total saat ini: ${sdiTotal}`);
 
-    // 4. Perhitungan SDI4 (Kedalaman Bekas Roda Rata-rata)
+    // SDI4: Alur Roda
     let additionalSDI4 = 0;
     if (laporan.alur_roda > 3) {
       additionalSDI4 = 20;
@@ -239,21 +233,25 @@ const SurveyDetailScreen = () => {
     let kategoriAksi = "";
     let kategoriKondisi = "";
 
-    // Update SDI category and action based on the provided table
     if (sdiTotal < 50) {
       kategoriKondisi = "Baik (Good)";
       kategoriAksi = "Pemeliharaan rutin; pembersihan, penutupan retak kecil, pemeriksaan berkala.";
     } else if (sdiTotal >= 50 && sdiTotal < 100) {
       kategoriKondisi = "Sedang (Fair)";
-      kategoriAksi = "Pemeliharaan rutin intensif dan pemeliharaan berkala; penutupan retak, pengisian lubang kecil, overlay tipis.";
+      kategoriAksi =
+        "Pemeliharaan rutin intensif dan pemeliharaan berkala; penutupan retak, pengisian lubang kecil, overlay tipis.";
     } else if (sdiTotal >= 100 && sdiTotal < 150) {
       kategoriKondisi = "Rusak Ringan (Poor)";
-      kategoriAksi = "Perbaikan terfokus; penambalan lubang/lapis tambal, perbaikan struktural ringan, overlay atau perkerasan ulang sebagian.";
-    } else { // sdiTotal >= 150
+      kategoriAksi =
+        "Perbaikan terfokus; penambalan lubang/lapis tambal, perbaikan struktural ringan, overlay atau perkerasan ulang sebagian.";
+    } else {
       kategoriKondisi = "Rusak Berat (Bad)";
-      kategoriAksi = "Rehabilitasi mayor atau rekonstruksi; penggantian lapisan permukaan/struktural secara menyeluruh untuk memulihkan kondisi jalan.";
+      kategoriAksi =
+        "Rehabilitasi mayor atau rekonstruksi; penggantian lapisan permukaan/struktural secara menyeluruh untuk memulihkan kondisi jalan.";
     }
-    steps.push(`\nBerdasarkan SDI Total ${sdiTotal.toFixed(2)}, Kategori: ${kategoriKondisi}, Aksi: ${kategoriAksi}`);
+    steps.push(
+      `Berdasarkan SDI Total ${sdiTotal.toFixed(2)}, Kategori: ${kategoriKondisi}, Aksi: ${kategoriAksi}`
+    );
 
     return steps;
   };
@@ -266,34 +264,32 @@ const SurveyDetailScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Detail Laporan</Text>
-        <View style={{ width: 24 }} /> {/* Placeholder for alignment */}
+        <View style={{ width: 24 }} />
       </LinearGradient>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.contentContainer}>
-          
-          {/* ✅ 1. METADATA SURVEY SECTION */}
+          {/* Metadata Survey Section */}
           {(laporan.tanggal_survey || laporan.waktu_survey || laporan.cuaca_survey) && (
             <View style={[styles.sectionContainer, { marginTop: 20 }]}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="time" size={24} color="#667eea" />
-                <Text style={styles.sectionTitle}>📅 Metadata Survey</Text>
+                <Text style={styles.sectionTitle}>
+                  <Text>📅</Text> Metadata Survey
+                </Text>
               </View>
-              
               {laporan.tanggal_survey && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Tanggal Survey:</Text>
                   <Text style={styles.detailValue}>{formatDisplayValue(laporan.tanggal_survey)}</Text>
                 </View>
               )}
-              
               {laporan.waktu_survey && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Waktu Survey:</Text>
                   <Text style={styles.detailValue}>{formatConditionValue(laporan.waktu_survey)}</Text>
                 </View>
               )}
-              
               {laporan.cuaca_survey && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Kondisi Cuaca:</Text>
@@ -304,35 +300,31 @@ const SurveyDetailScreen = () => {
           )}
 
           {/* Basic Info Section */}
-          <View style={[styles.sectionContainer, { marginTop: (laporan.tanggal_survey || laporan.waktu_survey || laporan.cuaca_survey) ? 0 : 20 }]}>
+          <View
+            style={[
+              styles.sectionContainer,
+              { marginTop: laporan.tanggal_survey || laporan.waktu_survey || laporan.cuaca_survey ? 0 : 20 },
+            ]}
+          >
             <View style={styles.sectionHeader}>
               <Ionicons name="information-circle" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Informasi Dasar</Text>
             </View>
-
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Nama Jalan:</Text>
-              <Text style={styles.detailValue}>{laporan.nama_jalan}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.nama_jalan)}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Jalan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenis_jalan}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.jenis_jalan)}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>STA Awal:</Text>
-              <Text style={styles.detailValue}>{laporan.sta_awal}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.sta_awal)}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>STA Akhir:</Text>
-              <Text style={styles.detailValue}>{laporan.sta_akhir}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Tanggal Laporan:</Text>
-              <Text style={styles.detailValue}>{new Date(laporan.tanggal).toLocaleDateString()}</Text>
-            </View>
-            <View style={styles.detailItem}>
-              <Text style={styles.detailLabel}>Status Laporan:</Text>
-              <Text style={styles.detailValue}>{laporan.status}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.sta_akhir)}</Text>
             </View>
           </View>
 
@@ -344,7 +336,7 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Koordinat GPS:</Text>
-              <Text style={styles.detailValue}>{laporan.lokasi}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.lokasi)}</Text>
             </View>
             <View style={styles.mapWrapper}>
               {lat && lng ? (
@@ -365,51 +357,59 @@ const SurveyDetailScreen = () => {
               <Ionicons name="warning" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Penilaian Kerusakan</Text>
             </View>
-
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Retak Dominan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenis_retak_dominan}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.jenis_retak_dominan)}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Luas Retak:</Text>
-              <Text style={styles.detailValue}>{laporan.luas_retak}% ({getHelpText('luas_retak', laporan.luas_retak)})</Text>
+              <Text style={styles.detailValue}>
+                {laporan.luas_retak}% ({getHelpText("luas_retak", laporan.luas_retak)})
+              </Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Lebar Retak:</Text>
-              <Text style={styles.detailValue}>{laporan.lebar_retak?.toFixed(1) ?? 'N/A'} mm ({getHelpText('lebar_retak', laporan.lebar_retak)})</Text>
+              <Text style={styles.detailValue}>
+                {laporan.lebar_retak != null ? laporan.lebar_retak.toFixed(1) : "N/A"} mm (
+                {getHelpText("lebar_retak", laporan.lebar_retak)})
+              </Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jumlah Lubang:</Text>
-              <Text style={styles.detailValue}>{laporan.jumlah_lubang} per km ({getHelpText('jumlah_lubang', laporan.jumlah_lubang)})</Text>
+              <Text style={styles.detailValue}>
+                {laporan.jumlah_lubang} per km ({getHelpText("jumlah_lubang", laporan.jumlah_lubang)})
+              </Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Alur Roda:</Text>
-              <Text style={styles.detailValue}>{laporan.alur_roda?.toFixed(1) ?? 'N/A'} cm ({getHelpText('alur_roda', laporan.alur_roda)})</Text>
+              <Text style={styles.detailValue}>
+                {laporan.alur_roda != null ? laporan.alur_roda.toFixed(1) : "N/A"} cm (
+                {getHelpText("alur_roda", laporan.alur_roda)})
+              </Text>
             </View>
           </View>
 
-          {/* ✅ 2. KONDISI INFRASTRUKTUR PENDUKUNG SECTION */}
+          {/* Kondisi Infrastruktur Pendukung Section */}
           {(laporan.kondisi_drainase || laporan.kondisi_bahu || laporan.kondisi_markah) && (
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="construct" size={24} color="#667eea" />
-                <Text style={styles.sectionTitle}>🛣️ Kondisi Infrastruktur Pendukung</Text>
+                <Text style={styles.sectionTitle}>
+                  <Text>🛣️</Text> Kondisi Infrastruktur Pendukung
+                </Text>
               </View>
-              
               {laporan.kondisi_drainase && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Kondisi Drainase:</Text>
                   <Text style={styles.detailValue}>{formatConditionValue(laporan.kondisi_drainase)}</Text>
                 </View>
               )}
-              
               {laporan.kondisi_bahu && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Kondisi Bahu Jalan:</Text>
                   <Text style={styles.detailValue}>{formatConditionValue(laporan.kondisi_bahu)}</Text>
                 </View>
               )}
-              
               {laporan.kondisi_markah && (
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Kondisi Marka Jalan:</Text>
@@ -425,18 +425,17 @@ const SurveyDetailScreen = () => {
               <Ionicons name="car" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>Data Teknis & Lalu Lintas</Text>
             </View>
-
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Volume LHR:</Text>
-              <Text style={styles.detailValue}>{laporan.volume_lhr} kendaraan/hari</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.volume_lhr)} kendaraan/hari</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Sumber Data:</Text>
-              <Text style={styles.detailValue}>{laporan.sumber_data}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.sumber_data)}</Text>
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Jenis Perkerasan:</Text>
-              <Text style={styles.detailValue}>{laporan.jenis_perkerasan}</Text>
+              <Text style={styles.detailValue}>{formatDisplayValue(laporan.jenis_perkerasan)}</Text>
             </View>
           </View>
 
@@ -448,15 +447,17 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Skor SDI:</Text>
-              <Text style={styles.detailValueWhite}>{laporan.prioritas?.toFixed(2) ?? 'N/A'}</Text>
+              <Text style={styles.detailValueWhite}>
+                {laporan.prioritas != null ? laporan.prioritas.toFixed(2) : "N/A"}
+              </Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Kategori:</Text>
-              <Text style={styles.detailValueWhite}>{laporan.kategori}</Text>
+              <Text style={styles.detailValueWhite}>{formatDisplayValue(laporan.kategori)}</Text>
             </View>
             <View style={styles.detailItemWhite}>
               <Text style={styles.detailLabelWhite}>Aksi Rekomendasi:</Text>
-              <Text style={styles.detailValueWhite}>{laporan.aksi}</Text>
+              <Text style={styles.detailValueWhite}>{formatDisplayValue(laporan.aksi)}</Text>
             </View>
           </LinearGradient>
 
@@ -503,7 +504,9 @@ const SurveyDetailScreen = () => {
             </View>
             <View style={styles.detailItem}>
               <Text style={styles.detailLabel}>Observasi & Informasi Tambahan:</Text>
-              <Text style={styles.detailValue}>{laporan.keterangan || "Tidak ada keterangan tambahan."}</Text>
+              <Text style={styles.detailValue}>
+                {formatDisplayValue(laporan.keterangan, "Tidak ada keterangan tambahan.")}
+              </Text>
             </View>
           </View>
         </View>
@@ -528,7 +531,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -540,56 +543,52 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)",
   },
   headerTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
-
   sectionContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderRadius: 20,
     padding: 24,
     marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderBottomColor: "#f1f5f9",
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#1e293b',
+    fontWeight: "700",
+    color: "#1e293b",
     marginLeft: 12,
   },
   detailItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8fafc',
+    borderBottomColor: "#f8fafc",
   },
   detailLabel: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#4b5563',
+    fontWeight: "600",
+    color: "#4b5563",
     flex: 1,
   },
   detailValue: {
     fontSize: 15,
-    color: '#1e293b',
-    fontWeight: '500',
+    color: "#1e293b",
+    fontWeight: "500",
     flex: 2,
-    textAlign: 'right',
+    textAlign: "right",
   },
   mapWrapper: {
     height: 200,
@@ -597,23 +596,23 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   map: { flex: 1 },
   noLocationText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 80,
-    color: '#6b7280',
-    fontStyle: 'italic',
+    color: "#6b7280",
+    fontStyle: "italic",
   },
   mapButton: {
     flexDirection: "row",
     justifyContent: "center",
-    alignItems: 'center',
-    backgroundColor: '#667eea',
+    alignItems: "center",
+    backgroundColor: "#667eea",
     padding: 14,
     borderRadius: 12,
-    shadowColor: '#667eea',
+    shadowColor: "#667eea",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -621,11 +620,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mapButtonText: { color: "#fff", fontWeight: "600", fontSize: 16 },
-
   priorityGradient: {
     borderRadius: 20,
     padding: 24,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 12,
@@ -633,54 +631,52 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionHeaderWhite: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.2)',
+    borderBottomColor: "rgba(255,255,255,0.2)",
   },
   sectionTitleWhite: {
     fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
+    fontWeight: "700",
+    color: "#ffffff",
     marginLeft: 12,
   },
   detailItemWhite: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     marginBottom: 12,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
+    borderBottomColor: "rgba(255,255,255,0.1)",
   },
   detailLabelWhite: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#e0e7ff',
+    fontWeight: "600",
+    color: "#e0e7ff",
     flex: 1,
   },
   detailValueWhite: {
     fontSize: 15,
-    color: '#ffffff',
-    fontWeight: '500',
+    color: "#ffffff",
+    fontWeight: "500",
     flex: 2,
-    textAlign: 'right',
+    textAlign: "right",
   },
-
   calculationStep: {
     fontSize: 14,
-    color: '#374151',
+    color: "#374151",
     marginBottom: 8,
     lineHeight: 20,
   },
-
   photoScrollView: {
     marginBottom: 16,
   },
   photoScrollContent: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingRight: 20,
   },
   photoContainer: {
@@ -688,25 +684,25 @@ const styles = StyleSheet.create({
     height: 140,
     marginRight: 16,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: "#e2e8f0",
   },
   photoImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   photoCountContainer: {
-    backgroundColor: '#f0f9ff',
+    backgroundColor: "#f0f9ff",
     borderRadius: 12,
     padding: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 8,
   },
   photoCountText: {
     fontSize: 16,
-    color: '#0369a1',
-    fontWeight: '600',
+    color: "#0369a1",
+    fontWeight: "600",
   },
 });
 

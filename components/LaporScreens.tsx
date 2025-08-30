@@ -1,18 +1,17 @@
 // File: /LaporScreens.tsx
 
 import { Ionicons } from "@expo/vector-icons";
-import { MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import Slider from '@react-native-community/slider';
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { decode } from 'base64-arraybuffer';
+import { launchCamera, launchImageLibrary, CameraOptions, ImageLibraryOptions, ImagePickerResponse } from 'react-native-image-picker';
 import * as FileSystem from 'expo-file-system';
-import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Location from "expo-location";
 import React, { useEffect, useState } from "react";
 import {
-  ActionSheetIOS,
   ActivityIndicator,
   Alert,
   Image,
@@ -24,9 +23,20 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
+  Linking,
 } from "react-native";
 import { supabase } from './utils/supabase';
+
+// Type guard for geometry coordinates
+interface PointGeometry {
+  type: 'Point';
+  coordinates: [number, number];
+}
+
+const isPointGeometry = (geometry: any): geometry is PointGeometry => {
+  return geometry && geometry.type === 'Point' && Array.isArray(geometry.coordinates);
+};
 
 // ✅ INTERFACE YANG DIPERLUAS
 interface LaporanToEdit {
@@ -147,8 +157,8 @@ export default function LaporScreen() {
     else if (currentHour >= 18 && currentHour < 22) waktuDefault = "sore";
     else waktuDefault = "malam";
 
-    setFormData(prev => ({ 
-      ...prev, 
+    setFormData(prev => ({
+      ...prev,
       waktuSurvey: waktuDefault,
       tanggalSurvey: new Date().toLocaleDateString('id-ID')
     }));
@@ -209,7 +219,8 @@ export default function LaporScreen() {
     setSelectedCoordinate(null);
   };
 
-  // ✅ FUNGSI YANG SAMA (location, photo, etc.)
+  // ====== PERMISSIONS & PICKER HELPERS ======
+
   const getCurrentLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -228,7 +239,7 @@ export default function LaporScreen() {
       };
 
       setCurrentLocation(coordinate);
-      
+
       if (!isNaN(coordinate.latitude) && !isNaN(coordinate.longitude)) {
         setCenterCoordinate([coordinate.longitude, coordinate.latitude]);
         setZoomLevel(15);
@@ -260,90 +271,96 @@ export default function LaporScreen() {
     }
   };
 
-  const addPhoto = async () => {
-    try {
-      const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      const { status: mediaStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (cameraStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Aplikasi memerlukan izin kamera untuk mengambil foto');
+  // ✅ Fungsi kamera yang stabil
+  const openCamera = () => {
+    const options: CameraOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      includeBase64: false,
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+
+    launchCamera(options, (response: ImagePickerResponse) => {
+      if (response.didCancel) {
+        console.log('User cancelled camera');
         return;
       }
-      if (mediaStatus !== 'granted') {
-        Alert.alert('Permission Required', 'Aplikasi memerlukan izin galeri untuk memilih foto');
+
+      if (response.errorMessage) {
+        console.error('Camera error:', response.errorMessage);
+        Alert.alert('Error', `Gagal mengakses kamera: ${response.errorMessage}`);
         return;
       }
-      if (Platform.OS === 'ios') {
-        ActionSheetIOS.showActionSheetWithOptions(
-          { options: ['Batal', 'Ambil Foto', 'Pilih dari Galeri'], cancelButtonIndex: 0 },
-          (buttonIndex) => {
-            if (buttonIndex === 1) {
-              openCamera();
-            } else if (buttonIndex === 2) {
-              openImageLibrary();
-            }
-          }
-        );
-      } else {
-        Alert.alert(
-          'Pilih Foto', 'Pilih sumber foto',
-          [
-            { text: 'Batal', style: 'cancel' },
-            { text: 'Ambil Foto', onPress: openCamera },
-            { text: 'Pilih dari Galeri', onPress: openImageLibrary },
-          ]
-        );
+
+      if (response.assets && response.assets[0] && response.assets[0].uri) {
+        const newPhoto = response.assets[0].uri;
+        setFormData(prev => ({
+          ...prev, 
+          foto: [...prev.foto, newPhoto]
+        }));
+        Alert.alert('Sukses', 'Foto berhasil diambil dari kamera!');
       }
-    } catch (error) {
-      console.error('Error in addPhoto:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      Alert.alert('Error', `Gagal membuka kamera atau galeri: ${errorMessage}`);
-    }
+    });
   };
 
-  const openCamera = async () => {
-    try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-      });
-      
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const newPhoto = result.assets[0].uri;
-        setFormData(prev => ({
-          ...prev, foto: [...prev.foto, newPhoto]
-        }));
-        Alert.alert('Sukses', 'Foto berhasil ditambahkan');
+  // ✅ Fungsi galeri yang stabil
+  const openImageLibrary = () => {
+    const options: ImageLibraryOptions = {
+      mediaType: 'photo',
+      quality: 0.8,
+      includeBase64: false,
+      selectionLimit: 5, // bisa pilih multiple
+      maxWidth: 1024,
+      maxHeight: 1024,
+    };
+
+    launchImageLibrary(options, (response: ImagePickerResponse) => {
+      if (response.didCancel) {
+        console.log('User cancelled gallery');
+        return;
       }
-    } catch (error) {
-      console.error('Camera error:', error);
-      Alert.alert('Error', 'Gagal mengakses kamera');
-    }
-  };
-  
-  const openImageLibrary = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-        allowsMultipleSelection: true,
-      });
-  
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const newPhotos = result.assets.map(asset => asset.uri);
+
+      if (response.errorMessage) {
+        console.error('Gallery error:', response.errorMessage);
+        Alert.alert('Error', `Gagal mengakses galeri: ${response.errorMessage}`);
+        return;
+      }
+
+      if (response.assets && response.assets.length > 0) {
+        const newPhotos = response.assets
+          .map(asset => asset.uri)
+          .filter(uri => uri !== undefined) as string[];
+        
         setFormData(prev => ({
           ...prev,
           foto: [...prev.foto, ...newPhotos]
         }));
-        Alert.alert('Sukses', `${newPhotos.length} foto berhasil ditambahkan`);
+        Alert.alert('Sukses', `${newPhotos.length} foto berhasil dipilih dari galeri!`);
       }
-    } catch (error) {
-      console.error('Gallery error:', error);
-      Alert.alert('Error', 'Gagal memilih foto dari galeri');
-    }
+    });
   };
-  
+
+  // ✅ Fungsi utama dengan pilihan
+  const addPhoto = () => {
+    Alert.alert(
+      'Pilih Sumber Foto',
+      'Dari mana Anda ingin mengambil foto?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        { 
+          text: '📷 Kamera', 
+          onPress: openCamera 
+        },
+        { 
+          text: '🖼️ Galeri', 
+          onPress: openImageLibrary 
+        },
+      ]
+    );
+  };
+
+  // ✅ Fungsi untuk menghapus foto yang sudah ada
   const removeExistingPhoto = (index: number) => {
     Alert.alert(
       'Hapus Foto', 'Apakah Anda yakin ingin menghapus foto ini?',
@@ -636,7 +653,7 @@ export default function LaporScreen() {
   };
 
   const allPhotos = [...existingPhotos, ...formData.foto];
-  
+
   // ✅ REAL-TIME SDI CALCULATION
   const currentSDI = hitungPrioritas();
 
@@ -665,23 +682,23 @@ export default function LaporScreen() {
               <Ionicons name="time" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>📅 Metadata Survey</Text>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Tanggal Survey</Text>
-              <TextInput 
-                value={formData.tanggalSurvey} 
-                style={[styles.textInput, { backgroundColor: '#f3f4f6' }]} 
+              <TextInput
+                value={formData.tanggalSurvey}
+                style={[styles.textInput, { backgroundColor: '#f3f4f6' }]}
                 editable={false}
               />
             </View>
-            
+
             <View style={styles.rowContainer}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Text style={styles.inputLabel}>Waktu Survey</Text>
                 <View style={styles.pickerContainer}>
-                  <Picker 
-                    selectedValue={formData.waktuSurvey} 
-                    onValueChange={(value) => updateFormData("waktuSurvey", value)} 
+                  <Picker
+                    selectedValue={formData.waktuSurvey}
+                    onValueChange={(value) => updateFormData("waktuSurvey", value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="🌅 Pagi (06-12)" value="pagi" />
@@ -694,9 +711,9 @@ export default function LaporScreen() {
               <View style={{ flex: 1, marginLeft: 8 }}>
                 <Text style={styles.inputLabel}>Kondisi Cuaca</Text>
                 <View style={styles.pickerContainer}>
-                  <Picker 
-                    selectedValue={formData.cuacaSurvey} 
-                    onValueChange={(value) => updateFormData("cuacaSurvey", value)} 
+                  <Picker
+                    selectedValue={formData.cuacaSurvey}
+                    onValueChange={(value) => updateFormData("cuacaSurvey", value)}
                     style={styles.picker}
                   >
                     <Picker.Item label="Pilih Cuaca" value="" />
@@ -711,8 +728,8 @@ export default function LaporScreen() {
           </View>
 
           {/* ✅ 2. REAL-TIME SDI PREVIEW */}
-          <LinearGradient 
-            colors={getSDIColors(currentSDI.kategori)} 
+          <LinearGradient
+            colors={getSDIColors(currentSDI.kategori)}
             style={styles.sdiPreviewContainer}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -849,13 +866,13 @@ export default function LaporScreen() {
               <Ionicons name="construct" size={24} color="#667eea" />
               <Text style={styles.sectionTitle}>🛣️ Kondisi Infrastruktur Pendukung</Text>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Drainase</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiDrainase} 
-                  onValueChange={(value) => updateFormData("kondisiDrainase", value)} 
+                <Picker
+                  selectedValue={formData.kondisiDrainase}
+                  onValueChange={(value) => updateFormData("kondisiDrainase", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -866,13 +883,13 @@ export default function LaporScreen() {
                 </Picker>
               </View>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Bahu Jalan</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiBahu} 
-                  onValueChange={(value) => updateFormData("kondisiBahu", value)} 
+                <Picker
+                  selectedValue={formData.kondisiBahu}
+                  onValueChange={(value) => updateFormData("kondisiBahu", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -882,13 +899,13 @@ export default function LaporScreen() {
                 </Picker>
               </View>
             </View>
-            
+
             <View style={styles.inputContainer}>
               <Text style={styles.inputLabel}>Kondisi Marka Jalan</Text>
               <View style={styles.pickerContainer}>
-                <Picker 
-                  selectedValue={formData.kondisiMarkah} 
-                  onValueChange={(value) => updateFormData("kondisiMarkah", value)} 
+                <Picker
+                  selectedValue={formData.kondisiMarkah}
+                  onValueChange={(value) => updateFormData("kondisiMarkah", value)}
                   style={styles.picker}
                 >
                   <Picker.Item label="Pilih Kondisi" value="" />
@@ -1006,7 +1023,7 @@ export default function LaporScreen() {
           </View>
         </View>
 
-        {/* Modal Peta */}
+        {/* Modal Peta - Fixed version */}
         <Modal
           visible={isMapModalVisible}
           animationType="slide"
@@ -1025,16 +1042,14 @@ export default function LaporScreen() {
                 <Ionicons name="close" size={24} color="#6b7280" />
               </TouchableOpacity>
             </View>
-            
-            <MapView
+
+            <MapLibreGL.MapView
               style={styles.map}
-              zoomLevel={zoomLevel}
-              centerCoordinate={centerCoordinate}
-              styleURL="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
-              onPress={(event: any) => {
+              mapStyle="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
+              onPress={(event) => {
                 try {
                   const { geometry } = event;
-                  if (geometry?.coordinates && Array.isArray(geometry.coordinates)) {
+                  if (isPointGeometry(geometry)) {
                     const [longitude, latitude] = geometry.coordinates;
                     if (!isNaN(latitude) && !isNaN(longitude)) {
                       setSelectedCoordinate({ latitude, longitude });
@@ -1047,10 +1062,16 @@ export default function LaporScreen() {
               logoEnabled={false}
               attributionEnabled={false}
               compassEnabled={true}
-              scaleBarEnabled={false}
             >
+              <MapLibreGL.Camera
+                centerCoordinate={centerCoordinate}
+                zoomLevel={zoomLevel}
+                animationMode="flyTo"
+                animationDuration={1000}
+              />
+
               {selectedCoordinate && (
-                <PointAnnotation
+                <MapLibreGL.PointAnnotation
                   id="selected-location"
                   coordinate={[selectedCoordinate.longitude, selectedCoordinate.latitude]}
                 >
@@ -1062,11 +1083,11 @@ export default function LaporScreen() {
                     borderWidth: 2,
                     borderColor: 'white'
                   }} />
-                </PointAnnotation>
+                </MapLibreGL.PointAnnotation>
               )}
-              
+
               {currentLocation && (
-                <PointAnnotation
+                <MapLibreGL.PointAnnotation
                   id="user-location"
                   coordinate={[currentLocation.longitude, currentLocation.latitude]}
                 >
@@ -1078,15 +1099,21 @@ export default function LaporScreen() {
                     borderWidth: 2,
                     borderColor: 'white'
                   }} />
-                </PointAnnotation>
+                </MapLibreGL.PointAnnotation>
               )}
-            </MapView>
+            </MapLibreGL.MapView>
 
             <View style={styles.mapButtonsContainer}>
-              <TouchableOpacity style={[styles.mapButton, styles.mapCancelButton]} onPress={() => setIsMapModalVisible(false)}>
+              <TouchableOpacity
+                style={[styles.mapButton, styles.mapCancelButton]}
+                onPress={() => setIsMapModalVisible(false)}
+              >
                 <Text style={styles.mapButtonText}>Batal</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.mapButton, styles.mapConfirmButton]} onPress={confirmLocation}>
+              <TouchableOpacity
+                style={[styles.mapButton, styles.mapConfirmButton]}
+                onPress={confirmLocation}
+              >
                 <Text style={[styles.mapButtonText, { color: 'white' }]}>Pilih Lokasi</Text>
               </TouchableOpacity>
             </View>
@@ -1120,48 +1147,48 @@ const styles = StyleSheet.create({
   locationInputContainer: { flexDirection: 'row', alignItems: 'center' },
   locationInput: { flex: 1, marginRight: 12 },
   mapButton: { backgroundColor: '#667eea', borderRadius: 12, padding: 16, justifyContent: 'center', alignItems: 'center', shadowColor: '#667eea', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
-  
+
   // ✅ SDI PREVIEW STYLES
-  sdiPreviewContainer: { 
-    borderRadius: 20, 
-    marginBottom: 24, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 6 }, 
-    shadowOpacity: 0.15, 
-    shadowRadius: 15, 
-    elevation: 10 
+  sdiPreviewContainer: {
+    borderRadius: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 10
   },
-  sdiPreviewContent: { 
-    padding: 24 
+  sdiPreviewContent: {
+    padding: 24
   },
-  sdiPreviewHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 16 
+  sdiPreviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16
   },
-  sdiPreviewTitle: { 
-    fontSize: 18, 
-    fontWeight: '700', 
-    color: '#ffffff', 
-    marginLeft: 8 
+  sdiPreviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginLeft: 8
   },
-  sdiPreviewValues: { 
-    alignItems: 'center' 
+  sdiPreviewValues: {
+    alignItems: 'center'
   },
-  sdiPreviewValue: { 
-    fontSize: 48, 
-    fontWeight: '900', 
-    color: '#ffffff', 
-    textAlign: 'center' 
+  sdiPreviewValue: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#ffffff',
+    textAlign: 'center'
   },
-  sdiPreviewCategory: { 
-    fontSize: 16, 
-    fontWeight: '600', 
-    color: '#ffffff', 
-    marginTop: 4, 
-    textAlign: 'center' 
+  sdiPreviewCategory: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginTop: 4,
+    textAlign: 'center'
   },
-  
+
   sliderContainer: { marginBottom: 24, backgroundColor: '#f8fafc', borderRadius: 16, padding: 20, borderWidth: 1, borderColor: '#e2e8f0' },
   sliderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   sliderLabel: { fontSize: 16, fontWeight: '600', color: '#374151' },
