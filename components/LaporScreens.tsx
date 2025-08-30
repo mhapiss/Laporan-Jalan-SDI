@@ -1,7 +1,7 @@
 // File: /LaporScreens.tsx
 
 import { Ionicons } from "@expo/vector-icons";
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import { Camera, MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
 import Slider from '@react-native-community/slider';
 import { Picker } from "@react-native-picker/picker";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -25,6 +25,7 @@ import {
   TouchableOpacity,
   View,
   Linking,
+  ActionSheetIOS,
 } from "react-native";
 import { supabase } from './utils/supabase';
 
@@ -343,21 +344,27 @@ export default function LaporScreen() {
 
   // ✅ Fungsi utama dengan pilihan
   const addPhoto = () => {
-    Alert.alert(
-      'Pilih Sumber Foto',
-      'Dari mana Anda ingin mengambil foto?',
-      [
-        { text: 'Batal', style: 'cancel' },
-        { 
-          text: '📷 Kamera', 
-          onPress: openCamera 
-        },
-        { 
-          text: '🖼️ Galeri', 
-          onPress: openImageLibrary 
-        },
-      ]
-    );
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Batal', 'Ambil Foto', 'Pilih dari Galeri'], cancelButtonIndex: 0 },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            openCamera();
+          } else if (buttonIndex === 2) {
+            openImageLibrary();
+          }
+        }
+      );
+    } else {
+      Alert.alert(
+        'Pilih Foto', 'Pilih sumber foto',
+        [
+          { text: 'Batal', style: 'cancel' },
+          { text: 'Ambil Foto', onPress: openCamera },
+          { text: 'Pilih dari Galeri', onPress: openImageLibrary },
+        ]
+      );
+    }
   };
 
   // ✅ Fungsi untuk menghapus foto yang sudah ada
@@ -1043,10 +1050,10 @@ export default function LaporScreen() {
               </TouchableOpacity>
             </View>
 
-            <MapLibreGL.MapView
+            <MapView
               style={styles.map}
               mapStyle="https://api.maptiler.com/maps/streets/style.json?key=JiiHs6CPY8WFKYJJthkD"
-              onPress={(event) => {
+              onPress={(event: any) => {
                 try {
                   const { geometry } = event;
                   if (isPointGeometry(geometry)) {
@@ -1062,16 +1069,17 @@ export default function LaporScreen() {
               logoEnabled={false}
               attributionEnabled={false}
               compassEnabled={true}
+              zoomEnabled={true}
             >
-              <MapLibreGL.Camera
-                centerCoordinate={centerCoordinate}
+              <Camera
                 zoomLevel={zoomLevel}
-                animationMode="flyTo"
-                animationDuration={1000}
+                centerCoordinate={centerCoordinate}
+                animationMode="easeTo"
+                animationDuration={500}
               />
 
               {selectedCoordinate && (
-                <MapLibreGL.PointAnnotation
+                <PointAnnotation
                   id="selected-location"
                   coordinate={[selectedCoordinate.longitude, selectedCoordinate.latitude]}
                 >
@@ -1083,11 +1091,11 @@ export default function LaporScreen() {
                     borderWidth: 2,
                     borderColor: 'white'
                   }} />
-                </MapLibreGL.PointAnnotation>
+                </PointAnnotation>
               )}
 
               {currentLocation && (
-                <MapLibreGL.PointAnnotation
+                <PointAnnotation
                   id="user-location"
                   coordinate={[currentLocation.longitude, currentLocation.latitude]}
                 >
@@ -1099,9 +1107,9 @@ export default function LaporScreen() {
                     borderWidth: 2,
                     borderColor: 'white'
                   }} />
-                </MapLibreGL.PointAnnotation>
+                </PointAnnotation>
               )}
-            </MapLibreGL.MapView>
+            </MapView>
 
             <View style={styles.mapButtonsContainer}>
               <TouchableOpacity
